@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import "./page.css"; // Keep legacy styles if any
 import { useAuth } from "./hooks/useAuth";
 import { useClients } from "./hooks/useClients";
 import { useSessions } from "./hooks/useSessions";
@@ -140,6 +139,7 @@ export default function Page() {
         setFullNameInput={auth.setFullNameInput}
         authError={auth.authError}
         onSubmit={auth.handleAuthSubmit}
+        isAuthenticating={auth.isAuthenticating}
       />
     );
   }
@@ -153,6 +153,12 @@ export default function Page() {
         setActiveTab={setActiveTab}
         apiConnected={apiConnected}
         onSignOut={auth.handleSignOut}
+        clients={clientsHook.clients}
+        onNewClientClick={() => clientsHook.setIsAddClientOpen(true)}
+        onSelectClient={(client) => {
+          soapNote.setSelectedClientForNotes(client);
+          setActiveTab("notes");
+        }}
       />
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
@@ -163,7 +169,7 @@ export default function Page() {
             sessions={sessionsHook.sessions}
             recentSoapNotes={recentSoapNotes}
             todaySessions={sessionsHook.todaySessions}
-            weekSessionsCount={sessionsHook.weekSessionsCount}
+            weekSessionsHours={sessionsHook.weekSessionsHours}
             onNewClientClick={() => clientsHook.setIsAddClientOpen(true)}
             onViewCalendarClick={() => setActiveTab("schedule")}
             onSelectSessionForNotes={(session, client) => {
@@ -186,9 +192,6 @@ export default function Page() {
             setRawNotesContent={soapNote.setRawNotesContent}
             generatedSoap={soapNote.generatedSoap}
             isGenerating={soapNote.isGenerating}
-            userApiKey={soapNote.userApiKey}
-            setUserApiKey={soapNote.setUserApiKey}
-            showApiKeyBanner={soapNote.showApiKeyBanner}
             searchClientQuery={soapNote.searchClientQuery}
             setSearchClientQuery={soapNote.setSearchClientQuery}
             soapSubjective={soapNote.soapSubjective}
@@ -199,11 +202,11 @@ export default function Page() {
             setSoapAssessment={soapNote.setSoapAssessment}
             soapPlan={soapNote.soapPlan}
             setSoapPlan={soapNote.setSoapPlan}
-            handleSaveApiKey={soapNote.handleSaveApiKey}
             handleGenerateSoap={soapNote.handleGenerateSoap}
             handleSaveDraft={soapNote.handleSaveDraft}
             handleSignAndLock={soapNote.handleSignAndLock}
             onBookSessionClick={() => setActiveTab("schedule")}
+            showToast={showToast}
           />
         )}
 
@@ -229,6 +232,7 @@ export default function Page() {
             newApptType={sessionsHook.newApptType}
             setNewApptType={sessionsHook.setNewApptType}
             onSubmit={sessionsHook.handleBookApptSubmit}
+            isBooking={sessionsHook.isBooking}
           />
         )}
 
@@ -257,6 +261,8 @@ export default function Page() {
             pwError={settings.pwError}
             onSaveProfile={settings.handleSaveProfile}
             onUpdatePassword={settings.handleUpdatePassword}
+            isSavingProfile={settings.isSavingProfile}
+            isUpdatingPassword={settings.isUpdatingPassword}
           />
         )}
       </main>
@@ -274,6 +280,7 @@ export default function Page() {
         newClientNotes={clientsHook.newClientNotes}
         setNewClientNotes={clientsHook.setNewClientNotes}
         onSubmit={clientsHook.handleAddClientSubmit}
+        isSaving={clientsHook.isSaving}
       />
 
       <EditClientDialog
@@ -289,6 +296,7 @@ export default function Page() {
         setEditClientNotes={clientsHook.setEditClientNotes}
         editClientError={clientsHook.editClientError}
         onSubmit={clientsHook.handleEditClientSubmit}
+        isSaving={clientsHook.isSaving}
       />
 
       <HistoryDialog
