@@ -7,7 +7,7 @@ import { sql } from 'drizzle-orm';
  * for multi-tenant isolation.
  */
 export async function withRls<T>(orgId: string, callback: (tx: any) => Promise<T>): Promise<T> {
-  return await db.transaction(async (tx) => {
+  return await db.transaction(async (tx: any) => {
     await tx.execute(sql`SELECT set_config('app.current_org_id', ${orgId}, true)`);
     return await callback(tx);
   });

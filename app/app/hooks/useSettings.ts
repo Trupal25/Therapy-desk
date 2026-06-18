@@ -11,10 +11,15 @@ export function useSettings(
   const [pwNew, setPwNew] = useState("");
   const [pwNew2, setPwNew2] = useState("");
   const [pwError, setPwError] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileError("");
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -36,6 +41,8 @@ export function useSettings(
       showToast("Profile saved successfully", "ok");
     } catch (err) {
       setProfileError("API network error updating profile");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -46,6 +53,8 @@ export function useSettings(
       setPwError("New passwords do not match");
       return;
     }
+    if (isUpdatingPassword) return;
+    setIsUpdatingPassword(true);
 
     try {
       const res = await fetch("/api/settings", {
@@ -70,6 +79,8 @@ export function useSettings(
       showToast("Password updated successfully", "ok");
     } catch (err) {
       setPwError("API network error updating password");
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -89,5 +100,7 @@ export function useSettings(
     pwError,
     handleSaveProfile,
     handleUpdatePassword,
+    isSavingProfile,
+    isUpdatingPassword,
   };
 }

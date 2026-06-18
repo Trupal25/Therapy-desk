@@ -26,9 +26,9 @@ export function useSoapNote(
   const [rawNotesContent, setRawNotesContent] = useState("");
   const [generatedSoap, setGeneratedSoap] = useState<SoapNote | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [userApiKey, setUserApiKey] = useState("");
-  const [showApiKeyBanner, setShowApiKeyBanner] = useState(false);
   const [searchClientQuery, setSearchClientQuery] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
 
   const [soapSubjective, setSoapSubjective] = useState("");
   const [soapObjective, setSoapObjective] = useState("");
@@ -39,28 +39,6 @@ export function useSoapNote(
   const [historyClient, setHistoryClient] = useState<Client | null>(null);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedKey = localStorage.getItem("anthropic_key");
-      if (savedKey) {
-        setUserApiKey(savedKey);
-      } else {
-        setShowApiKeyBanner(true);
-      }
-    }
-  }, []);
-
-  const handleSaveApiKey = () => {
-    if (userApiKey) {
-      localStorage.setItem("anthropic_key", userApiKey);
-      setShowApiKeyBanner(false);
-      showToast("Anthropic API Key saved locally", "ok");
-    } else {
-      localStorage.removeItem("anthropic_key");
-      showToast("API key removed");
-    }
-  };
 
   const fetchSoapNoteForSession = useCallback(async (sessId: string) => {
     try {
@@ -115,7 +93,7 @@ export function useSoapNote(
         body: JSON.stringify({
           sessionId: selectedSessionForNotes.id,
           rawText: rawNotesContent,
-          userApiKey,
+          sessionType: selectedSessionForNotes.sessionType,
         }),
       });
 
@@ -125,12 +103,24 @@ export function useSoapNote(
         return;
       }
 
-      setGeneratedSoap(data.soap);
+      setGeneratedSoap({
+        id: data.soapNoteId,
+        subjective: data.soap.subjective,
+        objective: data.soap.objective,
+        assessment: data.soap.assessment,
+        plan: data.soap.plan,
+        status: "draft",
+        generationModel: data.model || "AI",
+        signedAt: null,
+        signedBy: null,
+        createdAt: new Date().toISOString(),
+      });
       setSoapSubjective(data.soap.subjective);
       setSoapObjective(data.soap.objective);
       setSoapAssessment(data.soap.assessment);
       setSoapPlan(data.soap.plan);
-      showToast("SOAP note generated successfully!", "ok");
+      const modelLabel = data.model || "AI";
+      showToast(`SOAP note generated via ${modelLabel}`, "ok");
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to generate SOAP note", "err");
@@ -144,6 +134,8 @@ export function useSoapNote(
       showToast("No active note to save", "err");
       return;
     }
+    if (isSaving) return;
+    setIsSaving(true);
 
     try {
       const res = await fetch("/api/notes/generate", {
@@ -180,6 +172,8 @@ export function useSoapNote(
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to save draft", "err");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -188,6 +182,8 @@ export function useSoapNote(
       showToast("Generate and save note before signing", "err");
       return;
     }
+    if (isSigning) return;
+    setIsSigning(true);
 
     try {
       const res = await fetch("/api/notes/sign", {
@@ -212,6 +208,8 @@ export function useSoapNote(
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to sign note", "err");
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -244,10 +242,6 @@ export function useSoapNote(
     generatedSoap,
     setGeneratedSoap,
     isGenerating,
-    userApiKey,
-    setUserApiKey,
-    showApiKeyBanner,
-    setShowApiKeyBanner,
     searchClientQuery,
     setSearchClientQuery,
     soapSubjective,
@@ -264,9 +258,10 @@ export function useSoapNote(
     historyList,
     loadingHistory,
     openHistoryModal,
-    handleSaveApiKey,
     handleGenerateSoap,
     handleSaveDraft,
     handleSignAndLock,
+    isSaving,
+    isSigning,
   };
 }

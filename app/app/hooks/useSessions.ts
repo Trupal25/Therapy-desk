@@ -11,6 +11,10 @@ export interface Session {
   durationMinutes: number;
   cptCode: string | null;
   clientName: string;
+  soapNote?: {
+    id: string;
+    status: string;
+  } | null;
 }
 
 export function useSessions(
@@ -23,6 +27,7 @@ export function useSessions(
   const [newApptTime, setNewApptTime] = useState("10:00");
   const [newApptDuration, setNewApptDuration] = useState("50 min");
   const [newApptType, setNewApptType] = useState("CBT");
+  const [isBooking, setIsBooking] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedCalDate, setSelectedCalDate] = useState<Date>(new Date());
@@ -45,6 +50,8 @@ export function useSessions(
       showToast("Please select a client and date", "err");
       return;
     }
+    if (isBooking) return;
+    setIsBooking(true);
 
     try {
       const scheduledAt = `${newApptDate}T${newApptTime}:00`;
@@ -71,6 +78,8 @@ export function useSessions(
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to book appointment", "err");
+    } finally {
+      setIsBooking(false);
     }
   };
 
@@ -115,6 +124,24 @@ export function useSessions(
     }).length;
   }, [sessions]);
 
+  const weekSessionsHours = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const weekStart = new Date(d.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    
+    const weekSess = sessions.filter((s) => {
+      const date = new Date(s.scheduledAt);
+      return date >= weekStart && date <= weekEnd;
+    });
+
+    const totalMinutes = weekSess.reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0);
+    return Math.round((totalMinutes / 60) * 10) / 10;
+  }, [sessions]);
+
   return {
     sessions,
     setSessions,
@@ -139,5 +166,7 @@ export function useSessions(
     daySessions,
     todaySessions,
     weekSessionsCount,
+    weekSessionsHours,
+    isBooking,
   };
 }

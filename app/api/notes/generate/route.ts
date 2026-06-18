@@ -5,11 +5,11 @@ import { logAuditEvent } from '../../../../lib/audit-helper';
 import { soapNotes } from '../../../../db/schema/soap_notes';
 import { sessionNotes } from '../../../../db/schema/session_notes';
 import { encrypt, hmacHash } from '../../../../lib/crypto';
-import { createHash } from 'crypto';
 import { and, eq } from 'drizzle-orm';
 import { sanitizeError } from '../../../../lib/error-helper';
+import { generateSoapWithGemini } from '../../../../lib/gemini';
 
-// Helper to generate a realistic clinical SOAP note if Anthropic API is not available
+// Fallback: generate a template-based clinical SOAP note when Gemini is unavailable
 function generateSimulatedSoap(rawNotes: string) {
   const notesLower = rawNotes.toLowerCase();
   
@@ -50,7 +50,7 @@ function generateSimulatedSoap(rawNotes: string) {
   return { subjective, objective, assessment, plan };
 }
 
-// POST /api/notes/generate — Generates a SOAP note from raw therapist notes
+// POST /api/notes/generate — Generates a SOAP note from raw therapist notes via Gemini AI
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { sessionId, rawText, userApiKey, subjective, objective, assessment, plan } = body;
+    const { sessionId, rawText, userApiKey, subjective, objective, assessment, plan, sessionType } = body;
 
     if (!sessionId || !rawText) {
       return NextResponse.json({ error: 'Session ID and raw notes are required' }, { status: 400 });
@@ -68,8 +68,10 @@ export async function POST(request: Request) {
     const orgId = session.organizationId;
     let soapResult = { subjective: '', objective: '', assessment: '', plan: '' };
     let usedModel = 'Simulated AI (Clinical Template)';
+    let generationDurationMs: number | null = null;
 
     if (userApiKey === 'skip_ai_and_use_values') {
+      // Manual edit passthrough — no AI involved
       soapResult = {
         subjective: subjective || '',
         objective: objective || '',
@@ -78,59 +80,25 @@ export async function POST(request: Request) {
       };
       usedModel = 'Manual Edit';
     } else {
-      // Check if Anthropic API key is provided in headers, env, or request body
-      const apiKey = userApiKey || process.env.ANTHROPIC_API_KEY;
+      // Try Gemini AI generation
+      const geminiKey = process.env.GEMINI_API_KEY;
 
-      if (apiKey && apiKey.startsWith('sk-ant-')) {
+      if (geminiKey) {
         try {
-          console.log('🤖 Sending request to Anthropic Messages API...');
-          const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'claude-3-5-sonnet-20241022',
-              max_tokens: 1024,
-              messages: [
-                {
-                  role: 'user',
-                  content: `You are a clinical psychology assistant. Convert the following raw therapist session shorthand notes into a highly professional, structured clinical SOAP note.
+          const startTime = Date.now();
+          const result = await generateSoapWithGemini(rawText, sessionType);
+          generationDurationMs = Date.now() - startTime;
 
-Raw Notes:
-"${rawText}"
-
-Format your response exactly as a JSON object with these keys (no markdown formatting, no code blocks):
-{
-  "subjective": "(Subjective details)",
-  "objective": "(Objective observations)",
-  "assessment": "(Clinical assessment)",
-  "plan": "(Plan/next steps)"
-}`,
-                },
-              ],
-            }),
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            const responseText = result.content[0].text;
-            const parsed = JSON.parse(responseText.trim());
-            if (parsed.subjective && parsed.objective && parsed.assessment && parsed.plan) {
-              soapResult = parsed;
-              usedModel = 'claude-3-5-sonnet-20241022';
-            }
-          } else {
-            console.warn('Anthropic API call failed. Falling back to simulated template.');
-          }
-        } catch (apiErr) {
-          console.error('Anthropic API connection failed:', apiErr);
+          soapResult = result.soap;
+          usedModel = result.model;
+        } catch (geminiErr) {
+          console.error('⚠️ Gemini AI generation failed, falling back to template:', geminiErr);
         }
+      } else {
+        console.warn('⚠️ GEMINI_API_KEY not set. Using simulated clinical template.');
       }
 
-      // Fallback if API was unsuccessful
+      // Fallback to template if Gemini was unsuccessful
       if (!soapResult.subjective) {
         soapResult = generateSimulatedSoap(rawText);
       }
@@ -192,6 +160,7 @@ Format your response exactly as a JSON object with these keys (no markdown forma
             assessmentEnc,
             planEnc,
             generationModel: usedModel === 'Manual Edit' ? existingSoapList[0].generationModel : usedModel,
+            generationDurationMs: generationDurationMs ?? existingSoapList[0].generationDurationMs,
             therapistEdited: userApiKey === 'skip_ai_and_use_values' ? true : existingSoapList[0].therapistEdited,
             updatedAt: new Date(),
           })
@@ -216,6 +185,7 @@ Format your response exactly as a JSON object with these keys (no markdown forma
             assessmentEnc,
             planEnc,
             generationModel: usedModel,
+            generationDurationMs: generationDurationMs,
             therapistEdited: userApiKey === 'skip_ai_and_use_values',
             status: 'draft',
             keyVersion: 1,
@@ -232,7 +202,7 @@ Format your response exactly as a JSON object with these keys (no markdown forma
         eventType: 'create',
         resourceType: 'soap_note',
         resourceId: soap.id,
-        metadata: { model: usedModel },
+        metadata: { model: usedModel, durationMs: generationDurationMs },
         req: request,
       });
 
@@ -243,6 +213,7 @@ Format your response exactly as a JSON object with these keys (no markdown forma
       success: true,
       soapNoteId: savedData.soap.id,
       soap: soapResult,
+      model: usedModel,
     });
 
   } catch (err: any) {
@@ -250,3 +221,4 @@ Format your response exactly as a JSON object with these keys (no markdown forma
     return NextResponse.json({ error: sanitizeError(err, 'Failed to generate notes') }, { status: 500 });
   }
 }
+

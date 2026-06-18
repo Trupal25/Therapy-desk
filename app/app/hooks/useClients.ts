@@ -32,6 +32,7 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
   const [editClientType, setEditClientType] = useState("General");
   const [editClientNotes, setEditClientNotes] = useState("");
   const [editClientError, setEditClientError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchClients = useCallback(async () => {
     try {
@@ -51,6 +52,8 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
       showToast("Name and age are required", "err");
       return;
     }
+    if (isSaving) return;
+    setIsSaving(true);
 
     try {
       const currentYear = new Date().getFullYear();
@@ -78,12 +81,16 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
       showToast("Client added successfully", "ok");
       setIsAddClientOpen(false);
       setNewClientName("");
+      setIsAddClientOpen(false);
+      setNewClientName("");
       setNewClientAge("");
       setNewClientNotes("");
       fetchClients();
       if (onRefreshData) onRefreshData();
     } catch (err) {
       showToast("API failure adding client", "err");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -94,9 +101,45 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
       setEditClientError("Name and age are required");
       return;
     }
-    showToast("Client updated successfully (simulated)", "ok");
-    setIsEditClientOpen(false);
+    if (!editingClient) return;
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const currentYear = new Date().getFullYear();
+      const dobYear = currentYear - parseInt(editClientAge);
+      const dob = `${dobYear}-01-01`;
+
+      const res = await fetch("/api/clients", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingClient.id,
+          firstName: editClientName.split(" ")[0],
+          lastName: editClientName.split(" ").slice(1).join(" ") || "Patient",
+          dateOfBirth: dob,
+          gender: editClientType,
+          referralSource: editClientNotes,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        setEditClientError(errData.error || "Failed to update client");
+        return;
+      }
+
+      showToast("Client updated successfully", "ok");
+      setIsEditClientOpen(false);
+      fetchClients();
+      if (onRefreshData) onRefreshData();
+    } catch (err) {
+      setEditClientError("API failure updating client");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
 
   const openEditClient = (client: Client) => {
     setEditingClient(client);
@@ -142,5 +185,6 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
     editClientError,
     openEditClient,
     handleEditClientSubmit,
+    isSaving,
   };
 }
