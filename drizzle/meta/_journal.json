@@ -15,6 +15,13 @@
       "when": 1781103549372,
       "tag": "0001_flawless_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781663848218,
+      "tag": "0002_amazing_scorpion",
+      "breakpoints": true
     }
   ]
 }

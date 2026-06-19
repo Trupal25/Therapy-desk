@@ -2,7 +2,7 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 export const orgPlanEnum             = pgEnum("org_plan",             ["free", "pro", "enterprise"]);
 export const userRoleEnum            = pgEnum("user_role",            ["owner", "admin", "therapist", "readonly"]);
-export const sessionTypeEnum         = pgEnum("session_type",         ["individual", "group", "couples", "family"]);
+export const sessionTypeEnum         = pgEnum("session_type",         ["individual", "group", "couples", "family", "cbt", "anxiety", "trauma", "depression", "general"]);
 export const sessionModalityEnum     = pgEnum("session_modality",     ["in_person", "telehealth", "phone"]);
 export const sessionStatusEnum       = pgEnum("session_status",       ["scheduled", "in_progress", "completed", "cancelled", "no_show"]);
 export const consentTypeEnum         = pgEnum("consent_type",         ["treatment", "hipaa_notice", "telehealth", "recording", "ai_processing"]);

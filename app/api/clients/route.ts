@@ -195,3 +195,90 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: sanitizeError(err, 'Failed to create client') }, { status: 500 });
   }
 }
+
+// PUT /api/clients — Update an existing client (encrypt data and index search hash)
+export async function PUT(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const {
+      id,
+      firstName,
+      lastName,
+      dateOfBirth,
+      gender,
+      referralSource,
+    } = body;
+
+    if (!id || !firstName || !lastName || !dateOfBirth) {
+      return NextResponse.json(
+        { error: 'Client ID, first name, last name, and date of birth are required' },
+        { status: 400 }
+      );
+    }
+
+    const orgId = session.organizationId;
+
+    // Encrypt fields
+    const firstNameEnc = encrypt(firstName.trim(), orgId);
+    const lastNameEnc = encrypt(lastName.trim(), orgId);
+    const dateOfBirthEnc = encrypt(dateOfBirth.trim(), orgId);
+    const referralSourceEnc = referralSource?.trim() || null;
+
+    // Generate searchable deterministic index hash
+    const searchHash = clientSearchHash(firstName.trim(), lastName.trim(), dateOfBirth.trim(), orgId);
+
+    const updatedClientData = await withRls(orgId, async (tx) => {
+      const [updated] = await tx
+        .update(clients)
+        .set({
+          firstNameEnc,
+          lastNameEnc,
+          dateOfBirthEnc,
+          gender: gender || null,
+          referralSource: referralSourceEnc,
+          searchHash,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(clients.id, id),
+            eq(clients.organizationId, orgId)
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        throw new Error('Client not found or access denied');
+      }
+
+      // Log Update Audit Event
+      await logAuditEvent(tx, {
+        organizationId: orgId,
+        actorId: session.userId,
+        eventType: 'update',
+        resourceType: 'client',
+        resourceId: updated.id,
+        req: request,
+      });
+
+      return {
+        id: updated.id,
+        firstName,
+        lastName,
+        dateOfBirth,
+        isActive: updated.isActive,
+      };
+    });
+
+    return NextResponse.json(updatedClientData);
+  } catch (err: any) {
+    console.error('Update client error:', err);
+    return NextResponse.json({ error: sanitizeError(err, 'Failed to update client') }, { status: 500 });
+  }
+}
+

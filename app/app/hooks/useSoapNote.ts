@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Client } from "./useClients";
 import { Session } from "./useSessions";
+import { compileSoapToHtml, parseSoapFromHtml } from "@/lib/soap-parser";
 
 export interface SoapNote {
   id: string;
@@ -26,43 +27,24 @@ export function useSoapNote(
   const [rawNotesContent, setRawNotesContent] = useState("");
   const [generatedSoap, setGeneratedSoap] = useState<SoapNote | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [userApiKey, setUserApiKey] = useState("");
-  const [showApiKeyBanner, setShowApiKeyBanner] = useState(false);
   const [searchClientQuery, setSearchClientQuery] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
 
   const [soapSubjective, setSoapSubjective] = useState("");
   const [soapObjective, setSoapObjective] = useState("");
   const [soapAssessment, setSoapAssessment] = useState("");
   const [soapPlan, setSoapPlan] = useState("");
+  const [soapUnifiedContent, setSoapUnifiedContent] = useState("");
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyClient, setHistoryClient] = useState<Client | null>(null);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedKey = localStorage.getItem("anthropic_key");
-      if (savedKey) {
-        setUserApiKey(savedKey);
-      } else {
-        setShowApiKeyBanner(true);
-      }
-    }
-  }, []);
-
-  const handleSaveApiKey = () => {
-    if (userApiKey) {
-      localStorage.setItem("anthropic_key", userApiKey);
-      setShowApiKeyBanner(false);
-      showToast("Anthropic API Key saved locally", "ok");
-    } else {
-      localStorage.removeItem("anthropic_key");
-      showToast("API key removed");
-    }
-  };
+  const [isLoadingNote, setIsLoadingNote] = useState(false);
 
   const fetchSoapNoteForSession = useCallback(async (sessId: string) => {
+    setIsLoadingNote(true);
     try {
       const res = await fetch(`/api/notes?sessionId=${sessId}`);
       if (res.ok) {
@@ -79,16 +61,27 @@ export function useSoapNote(
           setSoapObjective(data.soapNote.objective);
           setSoapAssessment(data.soapNote.assessment);
           setSoapPlan(data.soapNote.plan);
+          
+          const compiled = compileSoapToHtml(
+            data.soapNote.subjective || "",
+            data.soapNote.objective || "",
+            data.soapNote.assessment || "",
+            data.soapNote.plan || ""
+          );
+          setSoapUnifiedContent(compiled);
         } else {
           setGeneratedSoap(null);
           setSoapSubjective("");
           setSoapObjective("");
           setSoapAssessment("");
           setSoapPlan("");
+          setSoapUnifiedContent("");
         }
       }
     } catch (err) {
       console.error("Failed to fetch soap note:", err);
+    } finally {
+      setIsLoadingNote(false);
     }
   }, []);
 
@@ -115,7 +108,7 @@ export function useSoapNote(
         body: JSON.stringify({
           sessionId: selectedSessionForNotes.id,
           rawText: rawNotesContent,
-          userApiKey,
+          sessionType: selectedSessionForNotes.sessionType,
         }),
       });
 
@@ -125,12 +118,33 @@ export function useSoapNote(
         return;
       }
 
-      setGeneratedSoap(data.soap);
+      setGeneratedSoap({
+        id: data.soapNoteId,
+        subjective: data.soap.subjective,
+        objective: data.soap.objective,
+        assessment: data.soap.assessment,
+        plan: data.soap.plan,
+        status: "draft",
+        generationModel: data.model || "AI",
+        signedAt: null,
+        signedBy: null,
+        createdAt: new Date().toISOString(),
+      });
       setSoapSubjective(data.soap.subjective);
       setSoapObjective(data.soap.objective);
       setSoapAssessment(data.soap.assessment);
       setSoapPlan(data.soap.plan);
-      showToast("SOAP note generated successfully!", "ok");
+
+      const compiled = compileSoapToHtml(
+        data.soap.subjective || "",
+        data.soap.objective || "",
+        data.soap.assessment || "",
+        data.soap.plan || ""
+      );
+      setSoapUnifiedContent(compiled);
+
+      const modelLabel = data.model || "AI";
+      showToast(`SOAP note generated via ${modelLabel}`, "ok");
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to generate SOAP note", "err");
@@ -144,6 +158,10 @@ export function useSoapNote(
       showToast("No active note to save", "err");
       return;
     }
+    if (isSaving) return;
+    setIsSaving(true);
+
+    const parsed = parseSoapFromHtml(soapUnifiedContent);
 
     try {
       const res = await fetch("/api/notes/generate", {
@@ -153,10 +171,10 @@ export function useSoapNote(
           sessionId: selectedSessionForNotes.id,
           rawText: rawNotesContent,
           userApiKey: "skip_ai_and_use_values",
-          subjective: soapSubjective,
-          objective: soapObjective,
-          assessment: soapAssessment,
-          plan: soapPlan,
+          subjective: parsed.subjective,
+          objective: parsed.objective,
+          assessment: parsed.assessment,
+          plan: parsed.plan,
         }),
       });
 
@@ -170,16 +188,22 @@ export function useSoapNote(
       setGeneratedSoap({
         ...generatedSoap,
         id: data.soapNoteId,
-        subjective: soapSubjective,
-        objective: soapObjective,
-        assessment: soapAssessment,
-        plan: soapPlan,
+        subjective: parsed.subjective,
+        objective: parsed.objective,
+        assessment: parsed.assessment,
+        plan: parsed.plan,
       });
+      setSoapSubjective(parsed.subjective);
+      setSoapObjective(parsed.objective);
+      setSoapAssessment(parsed.assessment);
+      setSoapPlan(parsed.plan);
 
       showToast("Draft saved successfully!", "ok");
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to save draft", "err");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -188,6 +212,8 @@ export function useSoapNote(
       showToast("Generate and save note before signing", "err");
       return;
     }
+    if (isSigning) return;
+    setIsSigning(true);
 
     try {
       const res = await fetch("/api/notes/sign", {
@@ -212,6 +238,8 @@ export function useSoapNote(
       fetchRecentNotes();
     } catch (err) {
       showToast("Failed to sign note", "err");
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -244,10 +272,6 @@ export function useSoapNote(
     generatedSoap,
     setGeneratedSoap,
     isGenerating,
-    userApiKey,
-    setUserApiKey,
-    showApiKeyBanner,
-    setShowApiKeyBanner,
     searchClientQuery,
     setSearchClientQuery,
     soapSubjective,
@@ -258,15 +282,19 @@ export function useSoapNote(
     setSoapAssessment,
     soapPlan,
     setSoapPlan,
+    soapUnifiedContent,
+    setSoapUnifiedContent,
     isHistoryOpen,
     setIsHistoryOpen,
     historyClient,
     historyList,
     loadingHistory,
     openHistoryModal,
-    handleSaveApiKey,
     handleGenerateSoap,
     handleSaveDraft,
     handleSignAndLock,
+    isSaving,
+    isSigning,
+    isLoadingNote,
   };
 }

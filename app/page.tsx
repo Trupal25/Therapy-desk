@@ -17,7 +17,7 @@ import {
   Lock,
   MessageSquare
 } from "lucide-react";
-import "./page.css"; // Kept to import file, but all styling is now Tailwind
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 
 export default function Page() {
   useEffect(() => {
@@ -51,12 +51,29 @@ export default function Page() {
             <ChevronRight className="w-3 h-3" />
           </a>
         </div>
-        <a 
-          href="/app" 
-          className="px-4.5 py-2 bg-[#181816] hover:bg-sage text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition duration-200"
-        >
-          Start free trial →
-        </a>
+        <div className="flex items-center gap-4">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="text-xs font-semibold text-[#1a1a18] hover:text-[#181816]/70 transition cursor-pointer">
+                Sign In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="px-4.5 py-2 bg-[#181816] hover:bg-sage text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition duration-200 cursor-pointer">
+                Start free trial →
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <a 
+              href="/app" 
+              className="text-xs font-semibold text-stone-500 hover:text-[#1a1a18] transition"
+            >
+              Go to Workspace
+            </a>
+            <UserButton />
+          </Show>
+        </div>
       </nav>
 
       {/* HERO SECTION */}

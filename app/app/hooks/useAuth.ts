@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useClerk } from "@clerk/nextjs";
 
 export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
+  const { signOut } = useClerk();
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<{ authenticated: boolean; fullName?: string; role?: string; userId?: string } | null>(null);
   const [authAction, setAuthAction] = useState<"signin" | "signup">("signin");
@@ -8,6 +10,7 @@ export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
   const [passwordInput, setPasswordInput] = useState("");
   const [fullNameInput, setFullNameInput] = useState("");
   const [authError, setAuthError] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const checkAuth = async () => {
     try {
@@ -38,6 +41,8 @@ export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
       setAuthError("Email and password are required");
       return;
     }
+    if (isAuthenticating) return;
+    setIsAuthenticating(true);
 
     try {
       const res = await fetch("/api/auth", {
@@ -61,10 +66,17 @@ export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
       showToast(authAction === "signup" ? "Account created successfully!" : "Signed in successfully!", "ok");
     } catch (err) {
       setAuthError("Connection refused by database api. Please make sure the DB is running.");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Clerk sign out error", err);
+    }
     try {
       await fetch("/api/auth", { method: "DELETE" });
     } catch (err) {
@@ -72,6 +84,7 @@ export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
     }
     setUser({ authenticated: false });
     showToast("Signed out successfully");
+    window.location.href = "/";
   };
 
   return {
@@ -89,5 +102,6 @@ export function useAuth(showToast: (msg: string, type?: "ok" | "err") => void) {
     authError,
     handleAuthSubmit,
     handleSignOut,
+    isAuthenticating,
   };
 }

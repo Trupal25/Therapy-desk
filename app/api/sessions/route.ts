@@ -102,6 +102,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (new Date(scheduledAt) < new Date()) {
+      return NextResponse.json(
+        { error: 'Appointment date and time cannot be in the past' },
+        { status: 400 }
+      );
+    }
+
     const orgId = session.organizationId;
 
     const newSession = await withRls(orgId, async (tx) => {
