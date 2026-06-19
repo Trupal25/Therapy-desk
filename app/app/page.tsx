@@ -2,14 +2,13 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useAuth } from "./hooks/useAuth";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useClients } from "./hooks/useClients";
 import { useSessions } from "./hooks/useSessions";
 import { useSoapNote } from "./hooks/useSoapNote";
 import { useSettings } from "./hooks/useSettings";
 
 import { Sidebar } from "./components/Sidebar";
-import { AuthView } from "./components/AuthView";
 import { DashboardView } from "./components/DashboardView";
 import { NotesView } from "./components/NotesView";
 import { ScheduleView } from "./components/ScheduleView";
@@ -19,12 +18,15 @@ import { AddClientDialog, EditClientDialog, HistoryDialog } from "./components/D
 import { Toast } from "./components/Toast";
 
 export default function Page() {
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { signOut } = useClerk();
+
   const [activeTab, setActiveTab] = useState<"dashboard" | "notes" | "schedule" | "clients" | "settings">("dashboard");
   const [apiConnected, setApiConnected] = useState(true);
 
   // Toast State
   const [toast, setToast] = useState({ message: "", visible: false, type: "ok" as "ok" | "err" });
-  
+
   const showToast = useCallback((message: string, type?: "ok" | "err") => {
     setToast({ message, visible: true, type: type || "ok" });
     setTimeout(() => {
@@ -32,31 +34,40 @@ export default function Page() {
     }, 3000);
   }, []);
 
-  // Custom Hooks
-  const auth = useAuth(showToast);
-  const user = auth.user;
+  // Build a user object compatible with existing components
+  const user = clerkUser
+    ? {
+        authenticated: true,
+        fullName: clerkUser.fullName || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "Therapist",
+        userId: clerkUser.id,
+        role: "therapist",
+      }
+    : null;
+
+  const handleSignOut = useCallback(async () => {
+    await signOut({ redirectUrl: "/sign-in" });
+  }, [signOut]);
 
   const fetchRecentNotes = useCallback(() => {
-    // This is called when SOAP note updates, so we re-fetch sessions
     sessionsHook.fetchSessions();
   }, []);
 
   const clientsHook = useClients(showToast, () => {
     sessionsHook.fetchSessions();
   });
-  
+
   const sessionsHook = useSessions(showToast, fetchRecentNotes);
   const soapNote = useSoapNote(showToast, fetchRecentNotes, user);
-  const settings = useSettings(showToast, auth.setUser);
+  const settings = useSettings(showToast, () => {});
 
   // Fetch initial data when authenticated
   useEffect(() => {
-    if (user && user.authenticated) {
+    if (clerkUser) {
       const loadData = async () => {
         try {
           await Promise.all([
             clientsHook.fetchClients(),
-            sessionsHook.fetchSessions()
+            sessionsHook.fetchSessions(),
           ]);
           setApiConnected(true);
         } catch (err) {
@@ -67,23 +78,28 @@ export default function Page() {
       };
       loadData();
     }
-  }, [user, clientsHook.fetchClients, sessionsHook.fetchSessions, showToast]);
+  }, [clerkUser?.id]);
 
-  // Synchronize profile details when user loads
+  // Sync user name into settings
   useEffect(() => {
-    if (user && user.fullName) {
+    if (user?.fullName) {
       settings.setProfName(user.fullName);
     }
-  }, [user]);
+  }, [user?.fullName]);
 
   // Load sessions for selected client when client changes
   useEffect(() => {
     if (soapNote.selectedClientForNotes) {
-      const filtered = sessionsHook.sessions.filter((s) => s.clientId === soapNote.selectedClientForNotes!.id);
+      const filtered = sessionsHook.sessions.filter(
+        (s) => s.clientId === soapNote.selectedClientForNotes!.id
+      );
       soapNote.setClientSessions(filtered);
-      
+
       if (filtered.length > 0) {
-        if (!soapNote.selectedSessionForNotes || soapNote.selectedSessionForNotes.clientId !== soapNote.selectedClientForNotes!.id) {
+        if (
+          !soapNote.selectedSessionForNotes ||
+          soapNote.selectedSessionForNotes.clientId !== soapNote.selectedClientForNotes!.id
+        ) {
           const sorted = [...filtered].sort(
             (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
           );
@@ -108,41 +124,25 @@ export default function Page() {
         status: s.soapNote.status,
         soapNoteId: s.soapNote.id,
       }));
-
     listWithNotes.sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
     return listWithNotes;
   }, [sessionsHook.sessions]);
 
-  // Render loading state while checking authentication
-  if (!auth.authChecked) {
+  // Loading state — Clerk is still hydrating
+  if (!clerkLoaded) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center font-sans">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-sage border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs text-stone-400 font-light">Loading TherapyDesk secure practice workspace...</p>
+          <div className="w-10 h-10 border-4 border-sage border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-stone-400 font-light">Loading TherapyDesk...</p>
         </div>
       </div>
     );
   }
 
-  // Render authentication screens if not authenticated
-  if (!user || !user.authenticated) {
-    return (
-      <AuthView
-        authAction={auth.authAction}
-        setAuthAction={auth.setAuthAction}
-        emailInput={auth.emailInput}
-        setEmailInput={auth.setEmailInput}
-        passwordInput={auth.passwordInput}
-        setPasswordInput={auth.setPasswordInput}
-        fullNameInput={auth.fullNameInput}
-        setFullNameInput={auth.setFullNameInput}
-        authError={auth.authError}
-        onSubmit={auth.handleAuthSubmit}
-        isAuthenticating={auth.isAuthenticating}
-      />
-    );
-  }
+  // Middleware handles redirect to /sign-in for unauthenticated users.
+  // This null render is a safety net for any edge case before redirect fires.
+  if (!clerkUser) return null;
 
   return (
     <div className="min-h-screen bg-stone-50 text-ink flex flex-col md:flex-row font-sans">
@@ -152,11 +152,24 @@ export default function Page() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         apiConnected={apiConnected}
-        onSignOut={auth.handleSignOut}
+        onSignOut={handleSignOut}
         clients={clientsHook.clients}
+        recentSoapNotes={recentSoapNotes}
+        selectedClientForNotes={soapNote.selectedClientForNotes}
         onNewClientClick={() => clientsHook.setIsAddClientOpen(true)}
         onSelectClient={(client) => {
           soapNote.setSelectedClientForNotes(client);
+          setActiveTab("notes");
+        }}
+        onSelectRecentNote={(sessionId, clientName) => {
+          const sessionObj = sessionsHook.sessions.find((s) => s.id === sessionId);
+          const clientObj = clientsHook.clients.find(
+            (c) => `${c.firstName} ${c.lastName}` === clientName
+          );
+          if (sessionObj && clientObj) {
+            soapNote.setSelectedClientForNotes(clientObj);
+            soapNote.setSelectedSessionForNotes(sessionObj);
+          }
           setActiveTab("notes");
         }}
       />
@@ -177,6 +190,8 @@ export default function Page() {
               soapNote.setSelectedSessionForNotes(session);
               setActiveTab("notes");
             }}
+            isLoadingClients={clientsHook.isLoading}
+            isLoadingSessions={sessionsHook.isLoading}
           />
         )}
 
@@ -202,11 +217,14 @@ export default function Page() {
             setSoapAssessment={soapNote.setSoapAssessment}
             soapPlan={soapNote.soapPlan}
             setSoapPlan={soapNote.setSoapPlan}
+            soapUnifiedContent={soapNote.soapUnifiedContent}
+            setSoapUnifiedContent={soapNote.setSoapUnifiedContent}
             handleGenerateSoap={soapNote.handleGenerateSoap}
             handleSaveDraft={soapNote.handleSaveDraft}
             handleSignAndLock={soapNote.handleSignAndLock}
             onBookSessionClick={() => setActiveTab("schedule")}
             showToast={showToast}
+            isLoadingNote={soapNote.isLoadingNote}
           />
         )}
 
@@ -233,6 +251,7 @@ export default function Page() {
             setNewApptType={sessionsHook.setNewApptType}
             onSubmit={sessionsHook.handleBookApptSubmit}
             isBooking={sessionsHook.isBooking}
+            isLoading={sessionsHook.isLoading}
           />
         )}
 
@@ -242,6 +261,7 @@ export default function Page() {
             sessions={sessionsHook.sessions}
             onAddClientClick={() => clientsHook.setIsAddClientOpen(true)}
             onOpenHistoryModal={soapNote.openHistoryModal}
+            isLoading={clientsHook.isLoading}
           />
         )}
 
@@ -307,7 +327,7 @@ export default function Page() {
         loadingHistory={soapNote.loadingHistory}
       />
 
-      {/* TOAST SYSTEM */}
+      {/* TOAST */}
       <Toast
         message={toast.message}
         visible={toast.visible}

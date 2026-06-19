@@ -1,7 +1,24 @@
-import { Search, Clock, Sparkles, Lock, Unlock, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import {
+  Search,
+  Clock,
+  Sparkles,
+  Calendar as CalendarIcon,
+  Copy,
+  FileDown,
+  Printer,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  Users,
+  FileText,
+} from "lucide-react";
 import { Client } from "../hooks/useClients";
 import { Session } from "../hooks/useSessions";
 import { SoapNote } from "../hooks/useSoapNote";
+import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
 
 interface NotesViewProps {
   clients: Client[];
@@ -24,27 +41,230 @@ interface NotesViewProps {
   setSoapAssessment: (val: string) => void;
   soapPlan: string;
   setSoapPlan: (val: string) => void;
+  soapUnifiedContent: string;
+  setSoapUnifiedContent: (val: string) => void;
   handleGenerateSoap: () => void;
   handleSaveDraft: () => void;
   handleSignAndLock: () => void;
   onBookSessionClick: () => void;
   showToast?: (msg: string, type?: "ok" | "err") => void;
+  isLoadingNote?: boolean;
 }
 
 function getClientAvatarStyle(firstName: string, lastName: string) {
   const charCode = (firstName.charCodeAt(0) || 0) + (lastName.charCodeAt(0) || 0);
-  const gradients = [
-    "from-indigo-500 to-sky-400 text-white",
-    "from-emerald-500 to-teal-400 text-white",
-    "from-purple-500 to-pink-400 text-white",
-    "from-amber-500 to-orange-400 text-white",
-    "from-rose-500 to-pink-500 text-white",
-    "from-blue-600 to-cyan-400 text-white",
-    "from-teal-500 to-emerald-400 text-white",
+  const palettes = [
+    { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-200" },
+    { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
+    { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" },
+    { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200" },
+    { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-200" },
+    { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-200" },
+    { bg: "bg-teal-100", text: "text-teal-700", border: "border-teal-200" },
   ];
-  return gradients[charCode % gradients.length];
+  return palettes[charCode % palettes.length];
 }
 
+// ── Breadcrumb component ────────────────────────────────────────────────────
+function Breadcrumb({
+  client,
+  session,
+  onReset,
+  onResetSession,
+  onOpenClientDrawer,
+}: {
+  client: Client | null;
+  session: Session | null;
+  onReset: () => void;
+  onResetSession: () => void;
+  onOpenClientDrawer: () => void;
+}) {
+  return (
+    <nav className="flex items-center gap-1.5 text-xs text-zinc-400 select-none">
+      <button
+        onClick={onReset}
+        className="flex items-center gap-1 hover:text-zinc-700 transition font-medium cursor-pointer"
+      >
+        <FileText className="w-3.5 h-3.5" />
+        Notes
+      </button>
+      {client && (
+        <>
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
+          <button
+            onClick={onOpenClientDrawer}
+            className="font-semibold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2 transition cursor-pointer"
+          >
+            {client.firstName} {client.lastName}
+          </button>
+        </>
+      )}
+      {session && (
+        <>
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
+          <button
+            onClick={onResetSession}
+            className="text-zinc-500 hover:text-zinc-700 transition cursor-pointer font-medium"
+          >
+            {new Date(session.scheduledAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </button>
+        </>
+      )}
+    </nav>
+  );
+}
+
+// ── Client Drawer ───────────────────────────────────────────────────────────
+function ClientDrawer({
+  clients,
+  selectedClient,
+  searchQuery,
+  setSearchQuery,
+  onSelect,
+  onClose,
+}: {
+  clients: Client[];
+  selectedClient: Client | null;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  onSelect: (c: Client) => void;
+  onClose: () => void;
+}) {
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const filtered = clients.filter((c) =>
+    `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-[1px] z-40" onClick={onClose} />
+      {/* Drawer */}
+      <div
+        ref={drawerRef}
+        className="fixed top-0 left-0 h-full w-72 bg-white border-r border-zinc-200 z-50 flex flex-col shadow-2xl animate-slideInLeft print:hidden"
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900">Select Patient</h3>
+            <p className="text-[10px] text-zinc-400 mt-0.5">{clients.length} active patients</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="p-3 border-b border-zinc-50">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              autoFocus
+              className="w-full pl-9 pr-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-800 placeholder-zinc-400 outline-none focus:bg-white focus:border-zinc-400 transition-all duration-150"
+              type="text"
+              placeholder="Search patients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center text-xs text-zinc-400">No patients found.</div>
+          ) : (
+            filtered.map((c) => {
+              const avatar = getClientAvatarStyle(c.firstName, c.lastName);
+              const initials = `${c.firstName[0] || ""}${c.lastName[0] || ""}`.toUpperCase();
+              const isSelected = selectedClient?.id === c.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => onSelect(c)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer ${
+                    isSelected
+                      ? "bg-zinc-900 text-white"
+                      : "hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border ${
+                      isSelected
+                        ? "bg-white/20 text-white border-white/20"
+                        : `${avatar.bg} ${avatar.text} ${avatar.border}`
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold truncate ${isSelected ? "text-white" : "text-zinc-800"}`}>
+                      {c.firstName} {c.lastName}
+                    </p>
+                    <p className={`text-[9px] truncate mt-0.5 ${isSelected ? "text-white/60" : "text-zinc-400"}`}>
+                      {c.email || "No email on file"}
+                    </p>
+                  </div>
+                  {isSelected && <ChevronRight className="w-3.5 h-3.5 text-white/60 ml-auto shrink-0" />}
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Notes skeleton ──────────────────────────────────────────────────────────
+function NotesSkeleton() {
+  return (
+    <div className="space-y-5 animate-pulse">
+      <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
+          <div className="h-4 bg-zinc-200 rounded w-1/3" />
+          <div className="h-3 bg-zinc-100 rounded w-20" />
+        </div>
+        <div className="p-5 space-y-3 min-h-[168px]">
+          <div className="h-3 bg-zinc-100 rounded w-full" />
+          <div className="h-3 bg-zinc-100 rounded w-5/6" />
+          <div className="h-3 bg-zinc-100 rounded w-2/3" />
+        </div>
+      </div>
+      <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 bg-zinc-50/50 border-b border-zinc-100">
+          <div className="h-3 bg-zinc-200 rounded w-1/4" />
+        </div>
+        <div className="p-5 space-y-3 min-h-[200px]">
+          <div className="h-3 bg-zinc-100 rounded w-full" />
+          <div className="h-3 bg-zinc-100 rounded w-11/12" />
+          <div className="h-3 bg-zinc-100 rounded w-5/6" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
 export function NotesView({
   clients,
   selectedClientForNotes,
@@ -66,399 +286,411 @@ export function NotesView({
   setSoapAssessment,
   soapPlan,
   setSoapPlan,
+  soapUnifiedContent,
+  setSoapUnifiedContent,
   handleGenerateSoap,
   handleSaveDraft,
-  handleSignAndLock,
   onBookSessionClick,
-  showToast
+  showToast,
+  isLoadingNote = false,
 }: NotesViewProps) {
-  const filteredClientsForNotes = clients.filter(c => 
-    `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchClientQuery.toLowerCase())
-  );
+  const [isDrawerOpen, setIsDrawerOpen] = useState(!selectedClientForNotes);
 
+  // Auto-open drawer if no client selected
+  useEffect(() => {
+    if (!selectedClientForNotes) {
+      setIsDrawerOpen(true);
+    }
+  }, [selectedClientForNotes]);
+
+  const handleCopyNote = () => {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = soapUnifiedContent;
+    const text = tempDiv.textContent || tempDiv.innerText || "";
+    navigator.clipboard.writeText(text);
+    if (showToast) showToast("SOAP note text copied to clipboard!", "ok");
+  };
+
+  const handleDownloadTxt = () => {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = soapUnifiedContent;
+    const text = tempDiv.textContent || tempDiv.innerText || "";
+    const clientName = selectedClientForNotes
+      ? `${selectedClientForNotes.firstName}_${selectedClientForNotes.lastName}`
+      : "client";
+    const dateStr = selectedSessionForNotes
+      ? new Date(selectedSessionForNotes.scheduledAt).toISOString().split("T")[0]
+      : "note";
+    const fileName = `SOAP_Note_${clientName}_${dateStr}.txt`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    if (showToast) showToast("Downloaded SOAP note text file!", "ok");
+  };
+
+  const handlePrintNote = () => window.print();
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-6xl animate-fadeUp space-y-6">
+    <div className="max-w-5xl animate-fadeUp">
+      {/* ── Breadcrumb bar ───────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5 print:hidden">
+        <Breadcrumb
+          client={selectedClientForNotes}
+          session={selectedSessionForNotes}
+          onReset={() => {
+            setSelectedClientForNotes(null);
+            setSelectedSessionForNotes(null);
+          }}
+          onResetSession={() => setSelectedSessionForNotes(null)}
+          onOpenClientDrawer={() => setIsDrawerOpen(true)}
+        />
 
-      {/* Two-panel details structure */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left client select lookup */}
-        <div className="lg:col-span-3 bg-white/80 backdrop-blur-md border border-stone-200/80 rounded-2xl overflow-hidden shadow-sm flex flex-col max-h-[700px] hover:border-stone-300 hover:shadow-md transition-all duration-300">
-          <div className="p-4 border-b border-stone-150 space-y-3 bg-stone-50/40">
-            <h3 className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Patients</h3>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                className="w-full pl-9 pr-3 py-2 bg-stone-100/80 border border-stone-200/60 rounded-xl text-xs text-ink placeholder-stone-400 outline-none focus:bg-white focus:border-sage focus:ring-2 focus:ring-sage/10 transition-all duration-200"
-                type="text"
-                placeholder="Search active patients..."
-                value={searchClientQuery}
-                onChange={(e) => setSearchClientQuery(e.target.value)}
-              />
-            </div>
+        {/* Change patient button */}
+        <button
+          onClick={() => setIsDrawerOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-zinc-200 text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:border-zinc-400 rounded-lg transition-all duration-150 cursor-pointer shadow-sm print:hidden"
+        >
+          <Users className="w-3.5 h-3.5" />
+          {selectedClientForNotes ? "Change Patient" : "Select Patient"}
+        </button>
+      </div>
+
+      {/* ── Client drawer ───────────────────────────────────────────────── */}
+      {isDrawerOpen && (
+        <ClientDrawer
+          clients={clients}
+          selectedClient={selectedClientForNotes}
+          searchQuery={searchClientQuery}
+          setSearchQuery={setSearchClientQuery}
+          onSelect={(c) => {
+            setSelectedClientForNotes(c);
+            setIsDrawerOpen(false);
+          }}
+          onClose={() => {
+            if (selectedClientForNotes) setIsDrawerOpen(false);
+          }}
+        />
+      )}
+
+      {/* ── Main content area ───────────────────────────────────────────── */}
+      {!selectedClientForNotes ? (
+        /* Empty state when no client selected */
+        <div className="bg-white border border-zinc-100 rounded-2xl py-24 text-center shadow-sm">
+          <div className="w-12 h-12 bg-zinc-50 border border-zinc-100 text-zinc-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Users className="w-6 h-6" />
           </div>
-          
-          <div className="overflow-y-auto p-2 flex-1 max-h-[500px] space-y-1 bg-white/50">
-            {filteredClientsForNotes.length === 0 ? (
-              <div className="p-8 text-center text-xs text-stone-400 font-light">
-                No clients found.
-              </div>
-            ) : (
-              filteredClientsForNotes.map((c) => {
-                const initials = `${c.firstName[0] || ""}${c.lastName[0] || ""}`.toUpperCase();
-                const avatarGradient = getClientAvatarStyle(c.firstName, c.lastName);
-                const isSelected = selectedClientForNotes?.id === c.id;
-
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedClientForNotes(c)}
-                    className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? "bg-sage/8 border-sage/20 shadow-sm border-l-4 border-l-sage scale-[1.01]" 
-                        : "bg-transparent border-transparent hover:bg-stone-50/80 hover:border-stone-200/40 hover:scale-[1.005]"}`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-[10px] font-bold tracking-wider shadow-sm shrink-0`}>
+          <h3 className="text-base font-semibold text-zinc-700">Select a patient</h3>
+          <p className="text-xs text-zinc-400 font-light mt-1 max-w-xs mx-auto">
+            Choose a patient from your list to start writing session notes.
+          </p>
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="mt-5 px-5 py-2.5 bg-zinc-900 text-white text-xs font-semibold rounded-xl shadow cursor-pointer hover:bg-zinc-800 transition inline-flex items-center gap-2"
+          >
+            <Users className="w-3.5 h-3.5" />
+            Browse Patients
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {/* ── Patient header + session tab strip ────────────────────── */}
+          <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm print:hidden">
+            {/* Patient info row */}
+            <div className="px-5 py-4 border-b border-zinc-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const avatar = getClientAvatarStyle(
+                    selectedClientForNotes.firstName,
+                    selectedClientForNotes.lastName
+                  );
+                  const initials = `${selectedClientForNotes.firstName[0] || ""}${selectedClientForNotes.lastName[0] || ""}`.toUpperCase();
+                  return (
+                    <div
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border ${avatar.bg} ${avatar.text} ${avatar.border}`}
+                    >
                       {initials}
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <span className={`text-xs font-semibold truncate ${isSelected ? "text-sage-dark font-bold" : "text-ink"}`}>
-                        {c.firstName} {c.lastName}
-                      </span>
-                      <span className="text-[9px] text-stone-400 font-light truncate mt-0.5">
-                        {c.email || "No email address"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right editor container */}
-        <div className="lg:col-span-9 space-y-5">
-          
-          {/* Header patient banner */}
-          <div className="bg-white border border-stone-200/70 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-stone-300 transition-all duration-300">
-            <div>
-              {selectedClientForNotes ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-serif text-2xl font-normal text-ink">
+                  );
+                })()}
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-900">
                     {selectedClientForNotes.firstName} {selectedClientForNotes.lastName}
+                    {selectedClientForNotes.pronouns && (
+                      <span className="ml-2 text-[9px] font-medium text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        {selectedClientForNotes.pronouns}
+                      </span>
+                    )}
                   </h2>
-                  {selectedClientForNotes.pronouns && (
-                    <span className="px-2 py-0.5 bg-sage-light/40 text-[9px] text-sage font-semibold rounded-md uppercase tracking-wider">
-                      {selectedClientForNotes.pronouns}
-                    </span>
-                  )}
-                  <span className="text-xs text-stone-400 font-light">
-                    DOB: {new Date(selectedClientForNotes.dateOfBirth).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </span>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    DOB:{" "}
+                    {new Date(selectedClientForNotes.dateOfBirth).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
                 </div>
-              ) : (
-                <h2 className="font-serif text-2xl font-normal text-ink">
-                  Select a client to begin
-                </h2>
+              </div>
+
+              {clientSessions.length === 0 && (
+                <button
+                  onClick={onBookSessionClick}
+                  className="px-3 py-1.5 bg-zinc-900 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800 transition shadow-sm"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  Book Session
+                </button>
               )}
-              <p className="text-[11px] text-stone-400 font-light mt-1">
-                {selectedSessionForNotes
-                  ? `Active Session: ${new Date(selectedSessionForNotes.scheduledAt).toLocaleDateString()} at ${new Date(
-                      selectedSessionForNotes.scheduledAt
-                    ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                  : "Select a session to start writing notes."}
-              </p>
             </div>
 
-            {generatedSoap && (
-              <div className="flex gap-2.5 w-full md:w-auto shrink-0">
-                <button
-                  className="flex-grow md:flex-grow-0 px-4.5 py-2.5 bg-white border border-stone-200 hover:border-stone-400 active:bg-stone-50 text-xs font-bold text-stone-600 hover:text-ink rounded-xl shadow-sm transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={generatedSoap.status === "signed"}
-                  onClick={handleSaveDraft}
-                >
-                  Save Draft
-                </button>
-                <button
-                  className={`flex-grow md:flex-grow-0 px-4.5 py-2.5 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-md transition duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed
-                    ${generatedSoap.status === "signed" 
-                      ? "bg-sage hover:bg-sage text-white shadow-none" 
-                      : "bg-stone-950 hover:bg-sage hover:scale-[1.01]"}`}
-                  disabled={generatedSoap.status === "signed"}
-                  onClick={handleSignAndLock}
-                >
-                  {generatedSoap.status === "signed" ? (
-                    <>
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Legally Locked</span>
-                    </>
-                  ) : (
-                    <>
-                      <Unlock className="w-3.5 h-3.5" />
-                      <span>Sign & Seal Note</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Session Timeline Selector */}
-          {selectedClientForNotes && clientSessions.length > 0 && (
-            <div className="bg-white border border-stone-200/70 rounded-2xl p-5 shadow-sm hover:border-stone-300 transition duration-300 space-y-3">
-              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Session Timeline</span>
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-stone-200">
+            {/* Session tab strip */}
+            {clientSessions.length > 0 && (
+              <div className="px-5 py-3 bg-zinc-50/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest shrink-0 mr-1">
+                  Sessions
+                </span>
                 {clientSessions.map((s) => {
                   const isSelected = selectedSessionForNotes?.id === s.id;
-                  const date = new Date(s.scheduledAt);
                   const hasNote = s.soapNote !== null && s.soapNote !== undefined;
-                  const isSigned = s.soapNote?.status === "signed";
-
+                  const date = new Date(s.scheduledAt);
                   return (
                     <button
                       key={s.id}
                       onClick={() => setSelectedSessionForNotes(s)}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left min-w-[140px] transition-all duration-250 shrink-0 cursor-pointer
-                        ${isSelected 
-                          ? "bg-sage text-white border-sage shadow-md scale-[1.02]" 
-                          : "bg-stone-50/50 hover:bg-stone-100/50 border-stone-200/60 text-ink hover:scale-[1.01]"}`}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shrink-0 transition-all duration-150 cursor-pointer ${
+                        isSelected
+                          ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
+                          : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900"
+                      }`}
                     >
-                      <span className={`text-[9px] font-bold tracking-wider ${isSelected ? "text-white/80" : "text-stone-400"}`}>
-                        {s.sessionType.toUpperCase()}
-                      </span>
-                      <span className="text-xs font-bold mt-1">
+                      <span>
                         {date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       </span>
-                      <span className={`text-[8.5px] mt-2.5 font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1
-                        ${isSelected 
-                          ? "bg-white/20 text-white font-semibold" 
-                          : isSigned 
-                            ? "bg-sage/10 text-sage font-bold" 
-                            : hasNote 
-                              ? "bg-amber-50 text-amber-600 font-bold" 
-                              : "bg-stone-100 text-stone-400"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : isSigned ? "bg-sage" : hasNote ? "bg-amber-500" : "bg-stone-400"}`}></span>
-                        {isSigned ? "Signed" : hasNote ? "Draft" : "Empty"}
-                      </span>
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isSelected ? "bg-emerald-400" : hasNote ? "bg-emerald-500" : "bg-zinc-300"
+                        }`}
+                      />
                     </button>
                   );
                 })}
+                <button
+                  onClick={onBookSessionClick}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-dashed border-zinc-300 text-[10px] font-semibold text-zinc-400 hover:text-zinc-600 hover:border-zinc-400 transition shrink-0 cursor-pointer ml-1"
+                >
+                  <CalendarIcon className="w-3 h-3" />
+                  New
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {selectedSessionForNotes ? (
+          {/* ── Note editor area ──────────────────────────────────────── */}
+          {!selectedSessionForNotes ? (
+            <div className="bg-white border border-zinc-100 rounded-2xl py-20 text-center shadow-sm print:hidden">
+              <div className="w-10 h-10 bg-zinc-50 text-zinc-300 rounded-xl flex items-center justify-center mx-auto mb-3 border border-zinc-100">
+                <CalendarIcon className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-medium text-zinc-600">
+                {clientSessions.length === 0 ? "No sessions yet" : "Pick a session to start"}
+              </h3>
+              <p className="text-xs text-zinc-400 font-light mt-1">
+                {clientSessions.length === 0
+                  ? "Book a session to begin writing clinical notes."
+                  : "Select a session tab above to load the note editor."}
+              </p>
+            </div>
+          ) : isLoadingNote ? (
+            <NotesSkeleton />
+          ) : (
             <>
-              {/* Transcript input */}
-              <div className="bg-white border border-stone-200/70 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-stone-300 transition duration-300">
-                <div className="px-5 py-3.5 bg-stone-50/40 border-b border-stone-150 flex items-center justify-between">
+              {/* Transcript / shorthand input */}
+              <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm print:hidden">
+                <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/30">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-stone-400 animate-pulse" />
-                    <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">Session shorthand notes</span>
+                    <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                    <span className="text-xs font-semibold text-zinc-700">Session shorthand notes</span>
                   </div>
-                  <button 
-                    onClick={() => showToast?.("Audio transcription is ready. Paste your raw draft or transcripts below to structure.", "ok")}
-                    className="text-[10px] text-stone-400 font-medium hover:text-sage hover:scale-[1.02] active:scale-98 transition flex items-center gap-1 cursor-pointer"
+                  <button
+                    onClick={() =>
+                      showToast?.(
+                        "Audio transcription ready — paste your raw draft or transcript below.",
+                        "ok"
+                      )
+                    }
+                    className="text-[10px] text-zinc-400 font-medium hover:text-emerald-600 transition flex items-center gap-1 cursor-pointer"
                   >
-                    <Sparkles className="w-3 h-3 text-sage" />
-                    <span>Transcribe Audio</span>
+                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                    Transcribe Audio
                   </button>
                 </div>
-                <textarea
-                  className="w-full min-h-[168px] p-6 border-none outline-none font-sans text-xs text-ink leading-6 resize-y bg-white placeholder-stone-400 focus:ring-0"
-                  style={{
-                    backgroundImage: "linear-gradient(to bottom, #f5f5f4 1px, transparent 1px)",
-                    backgroundSize: "100% 1.5rem",
-                    lineHeight: "1.5rem",
-                  }}
-                  placeholder="Paste session notes or transcript here... (e.g. 'Client reports increased anxiety about work. Strong alliance. Used somatic breathing exercise.')"
-                  value={rawNotesContent}
-                  onChange={(e) => setRawNotesContent(e.target.value)}
-                  disabled={generatedSoap?.status === "signed"}
-                ></textarea>
-                <div className="px-5 py-4.5 border-t border-stone-150 bg-stone-50/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <span className="text-[11px] text-stone-500 font-light leading-relaxed">
+                <div className="bg-white min-h-[160px]">
+                  <SimpleEditor
+                    content={rawNotesContent}
+                    onChange={setRawNotesContent}
+                    editable={true}
+                    placeholder="Paste session notes or transcript here… (e.g. 'Client reports increased anxiety about work. Strong alliance. Used somatic breathing exercise.')"
+                  />
+                </div>
+                <div className="px-5 py-4 border-t border-zinc-100 bg-zinc-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <span className="text-[11px] text-zinc-400 font-light leading-relaxed">
                     AI will structure your shorthand notes into a clinical SOAP format.
                   </span>
                   <button
                     onClick={handleGenerateSoap}
-                    disabled={isGenerating || generatedSoap?.status === "signed"}
-                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-stone-900 via-stone-950 to-stone-900 hover:from-sage hover:to-emerald-600 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.97]"
+                    disabled={isGenerating}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-zinc-900 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl shadow transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Sparkles className={`w-3.5 h-3.5 text-emerald-400 ${isGenerating ? "animate-spin" : "animate-pulse"}`} />
-                    <span>{isGenerating ? "Processing Transcript..." : "Generate SOAP Note"}</span>
+                    <Sparkles
+                      className={`w-3.5 h-3.5 text-emerald-400 ${
+                        isGenerating ? "animate-spin" : "animate-pulse"
+                      }`}
+                    />
+                    {isGenerating ? "Processing…" : "Generate SOAP Note"}
                   </button>
                 </div>
               </div>
 
-              {/* SOAP note output fields grid */}
-              <div>
-                <div className={`bg-white border border-stone-200/70 rounded-2xl p-5 shadow-sm hover:border-stone-300 transition-all duration-300 flex items-center justify-between
-                  ${generatedSoap?.status === "signed" ? "bg-sage-light/20 border-sage/20" : ""}`}>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className={`w-2.5 h-2.5 rounded-full ${isGenerating ? "bg-sage animate-ping" : generatedSoap ? "bg-sage" : "bg-stone-300"}`}></span>
-                    <span className={`text-xs font-bold uppercase tracking-wider
-                      ${generatedSoap?.status === "signed" ? "text-sage" : "text-stone-700"}`}>
-                      {generatedSoap
-                        ? `Clinical SOAP report (${(generatedSoap.status || "draft").toUpperCase()})`
-                        : "SOAP Report structure"}
-                    </span>
-                    {generatedSoap?.generationModel && (
-                      <span className="px-2.5 py-0.5 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-purple-200/40 rounded-full text-[10px] text-purple-700 font-semibold tracking-wide flex items-center gap-1.5 shadow-sm animate-fadeUp">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 animate-pulse"></span>
-                        {generatedSoap.generationModel}
-                      </span>
-                    )}
-                  </div>
-                  {generatedSoap?.status === "signed" && (
-                    <div className="flex items-center gap-1.5 text-xs text-sage font-bold uppercase tracking-wider bg-sage/10 px-2.5 py-1 rounded-lg">
-                      <CheckCircle2 className="w-4 h-4 text-sage" />
-                      <span>Legally Sealed</span>
-                    </div>
-                  )}
-                </div>
-
+              {/* SOAP output */}
+              <div className="print:block">
                 {generatedSoap ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    
-                    {/* Subjective */}
-                    <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md flex flex-col gap-3 group
-                      ${generatedSoap.status === "signed" 
-                        ? "border-stone-200 bg-stone-50/20" 
-                        : "border-indigo-100 hover:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-500/10 focus-within:border-indigo-400"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-xl bg-indigo-500 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-indigo-500/10">S</span>
-                          <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Subjective (S)</span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-light group-focus-within:text-indigo-400 transition-colors duration-200">Patient observations</span>
-                      </div>
-                      <textarea
-                        className="w-full min-h-[148px] bg-transparent border-none outline-none font-sans text-xs text-stone-600 leading-relaxed resize-none font-light focus:ring-0 focus:outline-none"
-                        value={soapSubjective}
-                        onChange={(e) => setSoapSubjective(e.target.value)}
-                        disabled={generatedSoap.status === "signed"}
-                        placeholder="Patient's reports of feelings, thoughts, and symptoms..."
-                      />
-                    </div>
-
-                    {/* Objective */}
-                    <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md flex flex-col gap-3 group
-                      ${generatedSoap.status === "signed" 
-                        ? "border-stone-200 bg-stone-50/20" 
-                        : "border-emerald-100 hover:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-500/10 focus-within:border-emerald-400"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-emerald-500/10">O</span>
-                          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Objective (O)</span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-light group-focus-within:text-emerald-400 transition-colors duration-200">Clinical data</span>
-                      </div>
-                      <textarea
-                        className="w-full min-h-[148px] bg-transparent border-none outline-none font-sans text-xs text-stone-600 leading-relaxed resize-none font-light focus:ring-0 focus:outline-none"
-                        value={soapObjective}
-                        onChange={(e) => setSoapObjective(e.target.value)}
-                        disabled={generatedSoap.status === "signed"}
-                        placeholder="Observable signs, measurements, behaviors, and clinical test data..."
-                      />
-                    </div>
-
-                    {/* Assessment */}
-                    <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md flex flex-col gap-3 group
-                      ${generatedSoap.status === "signed" 
-                        ? "border-stone-200 bg-stone-50/20" 
-                        : "border-amber-100 hover:border-amber-300 focus-within:ring-2 focus-within:ring-amber-500/10 focus-within:border-amber-400"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-xl bg-amber-500 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-amber-500/10">A</span>
-                          <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Assessment (A)</span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-light group-focus-within:text-amber-400 transition-colors duration-200">Therapist synthesis</span>
-                      </div>
-                      <textarea
-                        className="w-full min-h-[148px] bg-transparent border-none outline-none font-sans text-xs text-stone-600 leading-relaxed resize-none font-light focus:ring-0 focus:outline-none"
-                        value={soapAssessment}
-                        onChange={(e) => setSoapAssessment(e.target.value)}
-                        disabled={generatedSoap.status === "signed"}
-                        placeholder="Clinical synthesis, prognosis, diagnosis, and progress assessment..."
-                      />
-                    </div>
-
-                    {/* Plan */}
-                    <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md flex flex-col gap-3 group
-                      ${generatedSoap.status === "signed" 
-                        ? "border-stone-200 bg-stone-50/20" 
-                        : "border-violet-100 hover:border-violet-300 focus-within:ring-2 focus-within:ring-violet-500/10 focus-within:border-violet-400"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-xl bg-violet-500 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-violet-500/10">P</span>
-                          <span className="text-xs font-bold text-violet-700 uppercase tracking-wider">Plan (P)</span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-light group-focus-within:text-violet-400 transition-colors duration-200">Interventions & steps</span>
-                      </div>
-                      <textarea
-                        className="w-full min-h-[148px] bg-transparent border-none outline-none font-sans text-xs text-stone-600 leading-relaxed resize-none font-light focus:ring-0 focus:outline-none"
-                        value={soapPlan}
-                        onChange={(e) => setSoapPlan(e.target.value)}
-                        disabled={generatedSoap.status === "signed"}
-                        placeholder="Future treatments, referrals, goals, homework, and next session details..."
-                      />
-                    </div>
-
-                    {/* Signed & Sealed clinical certification block */}
-                    {generatedSoap.status === "signed" && (
-                      <div className="col-span-1 md:col-span-2 mt-2 bg-gradient-to-r from-sage/5 to-emerald-50/10 border border-sage/20 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 animate-fadeUp">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-sage/10 text-sage flex items-center justify-center shrink-0">
-                            <CheckCircle2 className="w-5 h-5 text-sage" />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-ink">Sealed & Finalized</h4>
-                            <p className="text-[10px] text-stone-400 font-light mt-0.5">
-                              Digitally signed by <span className="font-semibold text-stone-600">{generatedSoap.signedBy || "Therapist"}</span> on {generatedSoap.signedAt ? new Date(generatedSoap.signedAt).toLocaleString() : new Date().toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[9px] font-mono text-stone-300 bg-stone-100/50 px-2.5 py-1 rounded-md tracking-wider select-all block">
-                            SHA-256: {generatedSoap.id.substring(0, 16).toUpperCase()}
-                          </span>
-                          <span className="text-[8px] text-stone-400 font-light block mt-1 uppercase tracking-widest">
-                            HIPAA SECURE & LOCK VERIFIED
+                  <div className="animate-fadeUp">
+                    <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm focus-within:border-zinc-300 transition-all duration-200 print:border-none print:shadow-none">
+                      <div className="px-5 py-3.5 border-b border-zinc-100 bg-zinc-50/30 flex items-center justify-between flex-wrap gap-2 print:hidden">
+                        <div>
+                          <span className="text-xs font-semibold text-zinc-800">Unified SOAP Report</span>
+                          <span className="text-[10px] text-zinc-400 block mt-0.5 font-light">
+                            Structured via markdown headings · editable
                           </span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          {/* Export tools */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={handleCopyNote}
+                              title="Copy text"
+                              className="p-1.5 bg-white border border-zinc-200 hover:border-zinc-400 rounded-lg text-zinc-500 hover:text-zinc-800 transition cursor-pointer shadow-sm"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={handleDownloadTxt}
+                              title="Download .txt"
+                              className="p-1.5 bg-white border border-zinc-200 hover:border-zinc-400 rounded-lg text-zinc-500 hover:text-zinc-800 transition cursor-pointer shadow-sm"
+                            >
+                              <FileDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={handlePrintNote}
+                              title="Print / Export PDF"
+                              className="p-1.5 bg-white border border-zinc-200 hover:border-zinc-400 rounded-lg text-zinc-500 hover:text-zinc-800 transition cursor-pointer shadow-sm"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <button
+                            onClick={handleSaveDraft}
+                            className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-[11px] font-bold rounded-lg shadow transition cursor-pointer"
+                          >
+                            Save Note
+                          </button>
+                        </div>
                       </div>
-                    )}
-
+                      <SimpleEditor
+                        content={soapUnifiedContent}
+                        onChange={setSoapUnifiedContent}
+                        editable={true}
+                        placeholder="SOAP notes report…"
+                      />
+                    </div>
                   </div>
                 ) : (
-                  <div className="bg-white border border-stone-200/70 rounded-2xl py-16 text-center text-stone-400 text-xs font-light space-y-2.5 mt-4 hover:border-stone-300 transition duration-300">
-                    <p className="font-semibold text-stone-500">No SOAP note yet.</p>
-                    <p className="text-[10px] text-stone-400 max-w-xs mx-auto">Write session notes above and click Generate.</p>
+                  <div className="bg-white border border-zinc-100 rounded-2xl py-16 text-center shadow-sm print:hidden">
+                    <div className="w-10 h-10 bg-zinc-50 text-zinc-300 rounded-xl flex items-center justify-center mx-auto mb-3 border border-zinc-100">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <p className="text-sm font-medium text-zinc-500">No SOAP note yet</p>
+                    <p className="text-xs text-zinc-400 font-light mt-1">
+                      Write shorthand notes above and click Generate.
+                    </p>
                   </div>
                 )}
               </div>
             </>
-          ) : (
-            <div className="bg-white border border-stone-200/70 p-16 rounded-2xl text-center shadow-sm space-y-4 hover:border-stone-300 transition duration-300">
-              <div className="w-12 h-12 bg-sage-light text-sage rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-                <CalendarIcon className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="font-serif text-xl font-normal text-stone-700">No session loaded</h3>
-                <p className="text-xs text-stone-400 font-light max-w-sm mx-auto">Select a patient and choose a session to start writing notes.</p>
-              </div>
-              <button 
-                onClick={onBookSessionClick}
-                className="px-5 py-2.5 bg-sage hover:bg-sage/95 text-white text-xs font-bold rounded-xl shadow-md transition inline-flex items-center gap-2 cursor-pointer"
-              >
-                <CalendarIcon className="w-4 h-4" />
-                <span>Book Session</span>
-              </button>
-            </div>
           )}
         </div>
+      )}
 
+      {/* ── Print-only letterhead ─────────────────────────────────────────── */}
+      <div id="soap-print-report" className="hidden print:block font-sans max-w-3xl mx-auto p-8 space-y-6 text-zinc-900 bg-white">
+        <div className="border-b-2 border-zinc-300 pb-4 flex justify-between items-end">
+          <div>
+            <h1 className="font-serif text-3xl font-normal tracking-tight text-zinc-950">
+              Clinical Progress Record
+            </h1>
+            <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider font-semibold">
+              TherapyDesk Practice Record
+            </p>
+          </div>
+          <div className="text-right text-[10px] text-zinc-500 space-y-0.5">
+            <p className="font-bold text-zinc-800">
+              Printed: {new Date().toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-6 text-xs bg-zinc-50/50 p-4 rounded-xl border border-zinc-200">
+          <div>
+            <p className="text-zinc-500 font-bold uppercase tracking-wider text-[8px]">Patient Details</p>
+            <p className="font-bold text-zinc-900 text-sm mt-0.5">
+              {selectedClientForNotes?.firstName} {selectedClientForNotes?.lastName}
+            </p>
+            <p className="mt-1 text-zinc-600">
+              DOB:{" "}
+              {selectedClientForNotes &&
+                new Date(selectedClientForNotes.dateOfBirth).toLocaleDateString()}
+            </p>
+            {selectedClientForNotes?.gender && (
+              <p className="text-zinc-600">
+                Treatment Focus: {selectedClientForNotes.gender}
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="text-zinc-500 font-bold uppercase tracking-wider text-[8px]">Session Context</p>
+            <p className="font-bold text-zinc-900 text-sm mt-0.5">
+              {selectedSessionForNotes?.sessionType.toUpperCase()}
+            </p>
+            <p className="mt-1 text-zinc-600">
+              Date:{" "}
+              {selectedSessionForNotes &&
+                new Date(selectedSessionForNotes.scheduledAt).toLocaleDateString()}
+            </p>
+            <p className="text-zinc-600">
+              Status: {selectedSessionForNotes?.status.toUpperCase()}
+            </p>
+          </div>
+        </div>
+        <div className="space-y-4 pt-2">
+          <h3 className="font-serif text-xl border-b border-zinc-200 pb-1.5 text-zinc-950 font-normal">
+            SOAP Clinical Progress Report
+          </h3>
+          <div
+            className="text-sm leading-relaxed text-zinc-850 prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: soapUnifiedContent }}
+          />
+        </div>
+        <div className="pt-12 border-t border-zinc-200 flex justify-between items-end text-xs">
+          <div>
+            <p className="font-bold text-zinc-900">Practice Clinician Signature</p>
+            <p className="text-zinc-500 mt-4">____________________________________</p>
+            <p className="text-zinc-400 text-[10px] mt-1">Therapist Signature &amp; Date</p>
+          </div>
+        </div>
       </div>
     </div>
   );

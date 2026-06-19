@@ -144,12 +144,6 @@ const MainToolbarContent = ({
       </ToolbarGroup>
 
       <Spacer />
-
-      {isMobile && <ToolbarSeparator />}
-
-      <ToolbarGroup>
-        <ThemeToggle />
-      </ToolbarGroup>
     </>
   )
 }
@@ -183,7 +177,19 @@ const MobileToolbarContent = ({
   </>
 )
 
-export function SimpleEditor() {
+export interface SimpleEditorProps {
+  content?: string
+  onChange?: (html: string) => void
+  editable?: boolean
+  placeholder?: string
+}
+
+export function SimpleEditor({
+  content = "",
+  onChange,
+  editable = true,
+  placeholder,
+}: SimpleEditorProps) {
   const isMobile = useIsBreakpoint()
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = useState<"main" | "highlighter" | "link">(
@@ -198,7 +204,7 @@ export function SimpleEditor() {
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
-        "aria-label": "Main content area, start typing to enter text.",
+        "aria-label": placeholder || "Main content area, start typing to enter text.",
         class: "simple-editor",
       },
     },
@@ -229,7 +235,27 @@ export function SimpleEditor() {
       }),
     ],
     content,
+    onUpdate: ({ editor }) => {
+      if (onChange) {
+        onChange(editor.getHTML())
+      }
+    },
+    editable,
   })
+
+  // Sync content updates from outside
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content, { emitUpdate: false })
+    }
+  }, [content, editor])
+
+  // Sync editable changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(editable)
+    }
+  }, [editable, editor])
 
   const rect = useCursorVisibility({
     editor,

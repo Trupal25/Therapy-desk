@@ -33,8 +33,10 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
   const [editClientNotes, setEditClientNotes] = useState("");
   const [editClientError, setEditClientError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchClients = useCallback(async () => {
+    setIsLoading(true);
     try {
       const clientsRes = await fetch("/api/clients");
       if (clientsRes.ok) {
@@ -43,6 +45,8 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
       }
     } catch (err) {
       console.error("Error fetching clients:", err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -186,5 +190,6 @@ export function useClients(showToast: (msg: string, type?: "ok" | "err") => void
     openEditClient,
     handleEditClientSubmit,
     isSaving,
+    isLoading,
   };
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Client } from "./useClients";
 import { Session } from "./useSessions";
+import { compileSoapToHtml, parseSoapFromHtml } from "@/lib/soap-parser";
 
 export interface SoapNote {
   id: string;
@@ -34,13 +35,16 @@ export function useSoapNote(
   const [soapObjective, setSoapObjective] = useState("");
   const [soapAssessment, setSoapAssessment] = useState("");
   const [soapPlan, setSoapPlan] = useState("");
+  const [soapUnifiedContent, setSoapUnifiedContent] = useState("");
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyClient, setHistoryClient] = useState<Client | null>(null);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isLoadingNote, setIsLoadingNote] = useState(false);
 
   const fetchSoapNoteForSession = useCallback(async (sessId: string) => {
+    setIsLoadingNote(true);
     try {
       const res = await fetch(`/api/notes?sessionId=${sessId}`);
       if (res.ok) {
@@ -57,16 +61,27 @@ export function useSoapNote(
           setSoapObjective(data.soapNote.objective);
           setSoapAssessment(data.soapNote.assessment);
           setSoapPlan(data.soapNote.plan);
+          
+          const compiled = compileSoapToHtml(
+            data.soapNote.subjective || "",
+            data.soapNote.objective || "",
+            data.soapNote.assessment || "",
+            data.soapNote.plan || ""
+          );
+          setSoapUnifiedContent(compiled);
         } else {
           setGeneratedSoap(null);
           setSoapSubjective("");
           setSoapObjective("");
           setSoapAssessment("");
           setSoapPlan("");
+          setSoapUnifiedContent("");
         }
       }
     } catch (err) {
       console.error("Failed to fetch soap note:", err);
+    } finally {
+      setIsLoadingNote(false);
     }
   }, []);
 
@@ -119,6 +134,15 @@ export function useSoapNote(
       setSoapObjective(data.soap.objective);
       setSoapAssessment(data.soap.assessment);
       setSoapPlan(data.soap.plan);
+
+      const compiled = compileSoapToHtml(
+        data.soap.subjective || "",
+        data.soap.objective || "",
+        data.soap.assessment || "",
+        data.soap.plan || ""
+      );
+      setSoapUnifiedContent(compiled);
+
       const modelLabel = data.model || "AI";
       showToast(`SOAP note generated via ${modelLabel}`, "ok");
       fetchRecentNotes();
@@ -137,6 +161,8 @@ export function useSoapNote(
     if (isSaving) return;
     setIsSaving(true);
 
+    const parsed = parseSoapFromHtml(soapUnifiedContent);
+
     try {
       const res = await fetch("/api/notes/generate", {
         method: "POST",
@@ -145,10 +171,10 @@ export function useSoapNote(
           sessionId: selectedSessionForNotes.id,
           rawText: rawNotesContent,
           userApiKey: "skip_ai_and_use_values",
-          subjective: soapSubjective,
-          objective: soapObjective,
-          assessment: soapAssessment,
-          plan: soapPlan,
+          subjective: parsed.subjective,
+          objective: parsed.objective,
+          assessment: parsed.assessment,
+          plan: parsed.plan,
         }),
       });
 
@@ -162,11 +188,15 @@ export function useSoapNote(
       setGeneratedSoap({
         ...generatedSoap,
         id: data.soapNoteId,
-        subjective: soapSubjective,
-        objective: soapObjective,
-        assessment: soapAssessment,
-        plan: soapPlan,
+        subjective: parsed.subjective,
+        objective: parsed.objective,
+        assessment: parsed.assessment,
+        plan: parsed.plan,
       });
+      setSoapSubjective(parsed.subjective);
+      setSoapObjective(parsed.objective);
+      setSoapAssessment(parsed.assessment);
+      setSoapPlan(parsed.plan);
 
       showToast("Draft saved successfully!", "ok");
       fetchRecentNotes();
@@ -252,6 +282,8 @@ export function useSoapNote(
     setSoapAssessment,
     soapPlan,
     setSoapPlan,
+    soapUnifiedContent,
+    setSoapUnifiedContent,
     isHistoryOpen,
     setIsHistoryOpen,
     historyClient,
@@ -263,5 +295,6 @@ export function useSoapNote(
     handleSignAndLock,
     isSaving,
     isSigning,
+    isLoadingNote,
   };
 }

@@ -7,14 +7,44 @@ interface ClientsViewProps {
   sessions: Session[];
   onAddClientClick: () => void;
   onOpenHistoryModal: (c: Client) => void;
+  isLoading?: boolean;
 }
 
 export function ClientsView({
   clients,
   sessions,
   onAddClientClick,
-  onOpenHistoryModal
+  onOpenHistoryModal,
+  isLoading = false
 }: ClientsViewProps) {
+  const renderSkeletons = () => {
+    return Array.from({ length: 3 }).map((_, i) => (
+      <div 
+        key={`client-skeleton-${i}`}
+        className="bg-white border border-stone-200/70 rounded-2xl p-5 shadow-sm animate-pulse flex flex-col justify-between gap-4"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-xl bg-zinc-200 shadow-inner flex-shrink-0"></div>
+          <div className="flex-grow space-y-2">
+            <div className="h-3 bg-zinc-200 rounded w-2/3"></div>
+            <div className="h-2 bg-zinc-150 rounded w-1/2 mt-1.5"></div>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between pt-3.5 border-t border-stone-100 mt-1">
+          <div className="space-y-1">
+            <div className="h-2 bg-zinc-150 rounded w-12"></div>
+            <div className="h-3 bg-zinc-200 rounded w-16 mt-1"></div>
+          </div>
+          <div className="space-y-1">
+            <div className="h-2 bg-zinc-150 rounded w-16"></div>
+            <div className="h-3 bg-zinc-200 rounded w-14 mt-1"></div>
+          </div>
+        </div>
+      </div>
+    ));
+  };
+
   return (
     <div className="max-w-6xl animate-fadeUp space-y-6">
       
@@ -22,7 +52,9 @@ export function ClientsView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-normal text-ink">Client Directory</h2>
-          <p className="text-xs text-stone-400 font-light mt-0.5">{clients.length} patients</p>
+          <p className="text-xs text-stone-400 font-light mt-0.5">
+            {isLoading ? "Loading patient profiles..." : `${clients.length} patients`}
+          </p>
         </div>
         <button 
           onClick={onAddClientClick}
@@ -35,7 +67,9 @@ export function ClientsView({
 
       {/* Grid listing */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {clients.length === 0 ? (
+        {isLoading ? (
+          renderSkeletons()
+        ) : clients.length === 0 ? (
           <div className="col-span-full bg-white border border-stone-200/70 p-16 rounded-2xl text-center text-stone-400 text-xs font-light hover:border-stone-300 transition">
             <div className="w-12 h-12 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center mx-auto mb-4 text-stone-400">
               <Users className="w-6 h-6" />

@@ -17,6 +17,15 @@ export interface Session {
   } | null;
 }
 
+export function getLocalDateStr(date: Date | string) {
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function useSessions(
   showToast: (msg: string, type?: "ok" | "err") => void,
   fetchRecentNotes: () => void
@@ -28,11 +37,13 @@ export function useSessions(
   const [newApptDuration, setNewApptDuration] = useState("50 min");
   const [newApptType, setNewApptType] = useState("CBT");
   const [isBooking, setIsBooking] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedCalDate, setSelectedCalDate] = useState<Date>(new Date());
 
   const fetchSessions = useCallback(async () => {
+    setIsLoading(true);
     try {
       const sessionsRes = await fetch("/api/sessions");
       if (sessionsRes.ok) {
@@ -41,6 +52,8 @@ export function useSessions(
       }
     } catch (err) {
       console.error("Error fetching sessions:", err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -50,11 +63,21 @@ export function useSessions(
       showToast("Please select a client and date", "err");
       return;
     }
+
+    const timePart = newApptTime || "10:00";
+    const localDateTime = new Date(`${newApptDate}T${timePart}:00`);
+    if (localDateTime < new Date()) {
+      showToast("Appointment date and time cannot be in the past", "err");
+      return;
+    }
+
     if (isBooking) return;
     setIsBooking(true);
 
     try {
-      const scheduledAt = `${newApptDate}T${newApptTime}:00`;
+      const timePart = newApptTime || "10:00";
+      const localDateTime = new Date(`${newApptDate}T${timePart}:00`);
+      const scheduledAt = localDateTime.toISOString();
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,14 +122,14 @@ export function useSessions(
     return { firstDay, totalDays };
   }, [currentMonth]);
 
-  const selectedDateStr = selectedCalDate.toISOString().split("T")[0];
+  const selectedDateStr = getLocalDateStr(selectedCalDate);
   const daySessions = useMemo(() => {
-    return sessions.filter((s) => s.scheduledAt.startsWith(selectedDateStr));
+    return sessions.filter((s) => getLocalDateStr(s.scheduledAt) === selectedDateStr);
   }, [sessions, selectedDateStr]);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getLocalDateStr(new Date());
   const todaySessions = useMemo(() => {
-    return sessions.filter((s) => s.scheduledAt.startsWith(todayStr));
+    return sessions.filter((s) => getLocalDateStr(s.scheduledAt) === todayStr);
   }, [sessions, todayStr]);
 
   const weekSessionsCount = useMemo(() => {
@@ -168,5 +191,6 @@ export function useSessions(
     weekSessionsCount,
     weekSessionsHours,
     isBooking,
+    isLoading,
   };
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Clock, Calendar as CalIcon } from "lucide-react";
-import { Session } from "../hooks/useSessions";
+import { Session, getLocalDateStr } from "../hooks/useSessions";
 import { Client } from "../hooks/useClients";
 
 interface ScheduleViewProps {
@@ -25,6 +25,7 @@ interface ScheduleViewProps {
   setNewApptType: (val: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isBooking?: boolean;
+  isLoading?: boolean;
 }
 
 export function ScheduleView({
@@ -48,9 +49,20 @@ export function ScheduleView({
   newApptType,
   setNewApptType,
   onSubmit,
-  isBooking = false
+  isBooking = false,
+  isLoading = false
 }: ScheduleViewProps) {
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
+
+  const renderAgendaSkeleton = () => {
+    return Array.from({ length: 2 }).map((_, i) => (
+      <div key={`agenda-skeleton-${i}`} className="py-3.5 animate-pulse first:pt-0 last:pb-0 border-b border-stone-100 last:border-0">
+        <div className="h-2 bg-zinc-200 rounded w-1/4"></div>
+        <div className="h-3.5 bg-zinc-200 rounded w-2/3 mt-2"></div>
+        <div className="h-2 bg-zinc-150 rounded w-1/2 mt-1.5"></div>
+      </div>
+    ));
+  };
 
   // Timezone-safe start of week calculator (local date timezone-offset alignment)
   const getStartOfWeek = (d: Date) => {
@@ -60,13 +72,13 @@ export function ScheduleView({
     return new Date(date.setDate(diff));
   };
 
-  // Generate 7 days of the selected week in UTC for matching database strings
+  // Generate 7 days of the selected week in local timezone
   const weekDates = useMemo(() => {
     const start = getStartOfWeek(selectedCalDate);
     return Array.from({ length: 7 }, (_, idx) => {
       const d = new Date(start);
       d.setDate(start.getDate() + idx);
-      return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      return d;
     });
   }, [selectedCalDate]);
 
@@ -122,8 +134,8 @@ export function ScheduleView({
   const renderMonthView = () => {
     const { firstDay, totalDays } = daysInMonthData;
     const cells = [];
-    const todayStr = new Date().toISOString().split("T")[0];
-    const selectedStr = selectedCalDate.toISOString().split("T")[0];
+    const todayStr = getLocalDateStr(new Date());
+    const selectedStr = getLocalDateStr(selectedCalDate);
 
     const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -149,12 +161,12 @@ export function ScheduleView({
 
     // 3. Month days
     for (let day = 1; day <= totalDays; day++) {
-      const checkDate = new Date(Date.UTC(currentMonth.getFullYear(), currentMonth.getMonth(), day));
-      const dateStr = checkDate.toISOString().split("T")[0];
+      const checkDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      const dateStr = getLocalDateStr(checkDate);
       const isToday = dateStr === todayStr;
       const isSelected = dateStr === selectedStr;
 
-      const daySessionsList = sessions.filter((s) => s.scheduledAt.startsWith(dateStr));
+      const daySessionsList = sessions.filter((s) => getLocalDateStr(s.scheduledAt) === dateStr);
       
       cells.push(
         <div
@@ -223,7 +235,7 @@ export function ScheduleView({
     }
 
     return (
-      <div className="grid grid-cols-7 border-t border-l border-zinc-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+      <div className={`grid grid-cols-7 border-t border-l border-zinc-200/80 rounded-2xl overflow-hidden bg-white shadow-sm ${isLoading ? "animate-pulse pointer-events-none opacity-60" : ""}`}>
         {headerRow}
         {cells}
       </div>
@@ -231,17 +243,17 @@ export function ScheduleView({
   };
 
   const renderWeekView = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const selectedStr = selectedCalDate.toISOString().split("T")[0];
+    const todayStr = getLocalDateStr(new Date());
+    const selectedStr = getLocalDateStr(selectedCalDate);
     
     return (
-      <div className="grid grid-cols-1 md:grid-cols-7 border border-zinc-200 rounded-2xl overflow-hidden bg-white shadow-sm divide-y md:divide-y-0 md:divide-x divide-zinc-200">
+      <div className={`grid grid-cols-1 md:grid-cols-7 border border-zinc-200 rounded-2xl overflow-hidden bg-white shadow-sm divide-y md:divide-y-0 md:divide-x divide-zinc-200 ${isLoading ? "animate-pulse pointer-events-none opacity-60" : ""}`}>
         {weekDates.map((dayDate) => {
-          const dateStr = dayDate.toISOString().split("T")[0];
+          const dateStr = getLocalDateStr(dayDate);
           const isToday = dateStr === todayStr;
           const isSelected = dateStr === selectedStr;
           
-          const daySessionsList = sessions.filter((s) => s.scheduledAt.startsWith(dateStr));
+          const daySessionsList = sessions.filter((s) => getLocalDateStr(s.scheduledAt) === dateStr);
           
           const sortedSessions = [...daySessionsList].sort(
             (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
@@ -411,7 +423,9 @@ export function ScheduleView({
             </div>
             
             <div className="p-4 divide-y divide-stone-100 max-h-[300px] overflow-y-auto scrollbar-thin">
-              {daySessions.length === 0 ? (
+              {isLoading ? (
+                renderAgendaSkeleton()
+              ) : daySessions.length === 0 ? (
                 <div className="py-8 text-center text-stone-400 text-xs font-light">
                   No appointments booked on this date.
                 </div>
@@ -472,6 +486,7 @@ export function ScheduleView({
                     onChange={(e) => setNewApptDate(e.target.value)}
                     required
                     disabled={isBooking}
+                    min={getLocalDateStr(new Date())}
                   />
                 </div>
                 <div className="space-y-1.5">
