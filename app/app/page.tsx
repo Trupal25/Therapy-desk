@@ -145,7 +145,7 @@ export default function Page() {
   if (!clerkUser) return null;
 
   return (
-    <div className="min-h-screen bg-stone-50 text-ink flex flex-col md:flex-row font-sans">
+    <div className="h-screen bg-stone-50 text-ink flex flex-col md:flex-row font-sans overflow-hidden">
       <Sidebar
         user={user}
         profSpec={settings.profSpec}
@@ -174,7 +174,7 @@ export default function Page() {
         }}
       />
 
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+      <main className={`flex-1 overflow-y-auto ${activeTab === "notes" ? "p-0 overflow-hidden flex flex-col" : "p-6 md:p-8"}`}>
         {activeTab === "dashboard" && (
           <DashboardView
             user={user}
