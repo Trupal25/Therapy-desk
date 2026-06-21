@@ -18,6 +18,7 @@ import {
   Clock,
   Lock,
   MoreHorizontal,
+  Check,
 } from "lucide-react";
 import { Client } from "../hooks/useClients";
 import { Session } from "../hooks/useSessions";
@@ -102,8 +103,8 @@ function Skeleton() {
 }
 
 const NOTE_TYPES = [
+  { id: "shorthand", label: "Session Notes", icon: <Check style={{ width: 12, height: 12 }} /> },
   { id: "soap", label: "SOAP", icon: <FileText style={{ width: 12, height: 12 }} /> },
-  { id: "shorthand", label: "Session Notes", icon: <StickyNote style={{ width: 12, height: 12 }} /> },
 ] as const;
 type NoteTypeId = typeof NOTE_TYPES[number]["id"];
 
@@ -254,36 +255,6 @@ export function NotesView({
             {/* ── Note type pills + patient sub-header ─────────────────────── */}
             <div className="print:hidden" style={{ flexShrink: 0, borderBottom: "1px solid #EEECE8" }}>
 
-              {/* Pill tab bar */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 24px", borderBottom: "1px solid #F5F3F0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {NOTE_TYPES.map((t) => {
-                    const active = noteType === t.id;
-                    return (
-                      <button key={t.id} onClick={() => setNoteType(t.id)}
-                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", border: active ? "1.5px solid #1A1A18" : "1.5px solid #E2DED9", borderRadius: 8, background: active ? "#1A1A18" : "#fff", color: active ? "#fff" : "#6B6762", cursor: "pointer", fontSize: 12.5, fontWeight: active ? 700 : 500, fontFamily: "inherit", whiteSpace: "nowrap", transition: "all 0.12s" }}
-                        onMouseEnter={(e) => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#9B9590"; (e.currentTarget as HTMLElement).style.color = "#1A1A18"; } }}
-                        onMouseLeave={(e) => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#E2DED9"; (e.currentTarget as HTMLElement).style.color = "#6B6762"; } }}
-                      >
-                        {t.icon}
-                        {t.label}
-                        {t.id === "soap" && generatedSoap && (
-                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: active ? "#86EFAC" : "#2D6A4F", display: "inline-block" }} />
-                        )}
-                      </button>
-                    );
-                  })}
-                  <button
-                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", border: "1.5px dashed #D0CBC4", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 500, color: "#9B9590", fontFamily: "inherit", transition: "all 0.12s" }}
-                    onMouseEnter={(e) => { (e.currentTarget.style.borderColor = "#9B9590"); (e.currentTarget.style.color = "#3C3B38"); }}
-                    onMouseLeave={(e) => { (e.currentTarget.style.borderColor = "#D0CBC4"); (e.currentTarget.style.color = "#9B9590"); }}
-                  >
-                    <Plus style={{ width: 12, height: 12 }} />
-                    Add note
-                  </button>
-                </div>
-              </div>
-
               {/* Patient + session strip */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 24px", background: "#FAFAF8", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -356,66 +327,157 @@ export function NotesView({
 
                 {/* ── Editor ──────────────────────────────────────────── */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
-                  <div style={{ maxWidth: 720 }}>
+                  <div style={{ maxWidth: 720, display: "flex", flexDirection: "column" }}>
 
-                    {/* SOAP tab */}
-                    {noteType === "soap" && (
-                      generatedSoap ? (
-                        <div style={{ animation: "fadeUp 0.2s ease both" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid #F0EEE9" }}>
-                            <div>
-                              <h3 style={{ fontSize: 22, fontWeight: 400, color: "#1A1A18", margin: "0 0 3px", fontFamily: "'Instrument Serif', Georgia, serif" }}>SOAP Note</h3>
-                              <p style={{ fontSize: 11, color: "#B8B3AD", margin: 0 }}>AI generated · editable</p>
+                    {/* Tabs row styled like browser/card folders */}
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, paddingLeft: 12, position: "relative", zIndex: 10 }}>
+                      {NOTE_TYPES.map((t) => {
+                        const active = noteType === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => setNoteType(t.id)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "8px 18px",
+                              border: "1px solid #E2DED9",
+                              borderBottom: active ? "1px solid #FFF" : "1px solid #E2DED9",
+                              borderTopLeftRadius: 8,
+                              borderTopRightRadius: 8,
+                              background: active ? "#FFF" : "#F8F7F4",
+                              color: active ? "#1A1A18" : "#7A7570",
+                              cursor: "pointer",
+                              fontSize: "12.5px",
+                              fontWeight: active ? 700 : 500,
+                              fontFamily: "inherit",
+                              whiteSpace: "nowrap",
+                              position: "relative",
+                              zIndex: active ? 12 : 9,
+                              marginBottom: "-1px",
+                              transition: "all 0.1s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!active) {
+                                e.currentTarget.style.background = "#F0EEE9";
+                                e.currentTarget.style.color = "#1A1A18";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!active) {
+                                e.currentTarget.style.background = "#F8F7F4";
+                                e.currentTarget.style.color = "#7A7570";
+                              }
+                            }}
+                          >
+                            {t.icon}
+                            <span>{t.label}</span>
+                            {t.id === "soap" && generatedSoap && (
+                              <span style={{ width: 5, height: 5, borderRadius: "50%", background: active ? "#86EFAC" : "#2D6A4F", display: "inline-block" }} />
+                            )}
+                          </button>
+                        );
+                      })}
+                      <button
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "8px 14px",
+                          border: "1px dashed #D0CBC4",
+                          borderBottom: "1px solid #E2DED9",
+                          borderTopLeftRadius: 8,
+                          borderTopRightRadius: 8,
+                          background: "transparent",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          color: "#9B9590",
+                          fontFamily: "inherit",
+                          position: "relative",
+                          zIndex: 9,
+                          marginBottom: "-1px",
+                          transition: "all 0.12s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#9B9590"; e.currentTarget.style.color = "#3C3B38"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#D0CBC4"; e.currentTarget.style.color = "#9B9590"; }}
+                      >
+                        <Plus style={{ width: 12, height: 12 }} />
+                        <span>Add note</span>
+                      </button>
+                    </div>
+
+                    {/* Editor Box Container */}
+                    <div style={{
+                      border: "1px solid #E2DED9",
+                      borderRadius: 8,
+                      background: "#FFF",
+                      padding: "24px 32px",
+                      minHeight: 400,
+                      boxShadow: "0 1.5px 4px rgba(0,0,0,0.02)",
+                      position: "relative",
+                      zIndex: 8,
+                    }}>
+                      {/* SOAP tab */}
+                      {noteType === "soap" && (
+                        generatedSoap ? (
+                          <div style={{ animation: "fadeUp 0.2s ease both" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid #F0EEE9" }}>
+                              <div>
+                                <h3 style={{ fontSize: 22, fontWeight: 400, color: "#1A1A18", margin: "0 0 3px", fontFamily: "'Instrument Serif', Georgia, serif" }}>SOAP Note</h3>
+                                <p style={{ fontSize: 11, color: "#B8B3AD", margin: 0 }}>AI generated · editable</p>
+                              </div>
+                              <span style={{ ...statusBadge(statusConfig), fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 6 }}>
+                                {statusConfig.label}
+                              </span>
                             </div>
-                            <span style={{ ...statusBadge(statusConfig), fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 6 }}>
-                              {statusConfig.label}
-                            </span>
+                            <SimpleEditor content={soapUnifiedContent} onChange={setSoapUnifiedContent} editable={!isSigned} placeholder="SOAP notes…" />
                           </div>
-                          <SimpleEditor content={soapUnifiedContent} onChange={setSoapUnifiedContent} editable={!isSigned} placeholder="SOAP notes…" />
-                        </div>
-                      ) : (
-                        <div style={{ padding: "80px 0", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                          <div style={{ width: 48, height: 48, borderRadius: 13, background: "#F5F3F0", border: "1px solid #EEECE8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Sparkles style={{ width: 21, height: 21, color: "#C5B8A8" }} />
+                        ) : (
+                          <div style={{ padding: "80px 0", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                            <div style={{ width: 48, height: 48, borderRadius: 13, background: "#F5F3F0", border: "1px solid #EEECE8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Sparkles style={{ width: 21, height: 21, color: "#C5B8A8" }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: "#6B6762", margin: "0 0 4px" }}>No SOAP note yet</p>
+                              <p style={{ fontSize: 12, color: "#B8B3AD", margin: "0 0 20px" }}>Write your session notes, then generate.</p>
+                              <button onClick={() => setNoteType("shorthand")}
+                                style={{ padding: "8px 18px", background: "#1A1A18", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+                              >
+                                Go to Session Notes →
+                              </button>
+                            </div>
                           </div>
-                          <div>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: "#6B6762", margin: "0 0 4px" }}>No SOAP note yet</p>
-                            <p style={{ fontSize: 12, color: "#B8B3AD", margin: "0 0 20px" }}>Write your session notes, then generate.</p>
-                            <button onClick={() => setNoteType("shorthand")}
-                              style={{ padding: "8px 18px", background: "#1A1A18", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+                        )
+                      )}
+
+                      {/* Session Notes tab */}
+                      {noteType === "shorthand" && (
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid #F0EEE9" }}>
+                            <h3 style={{ fontSize: 22, fontWeight: 400, color: "#1A1A18", margin: 0, fontFamily: "'Instrument Serif', Georgia, serif" }}>Session Notes</h3>
+                            <button
+                              onClick={() => showToast?.("Audio transcription ready — paste your raw draft below.", "ok")}
+                              style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#9B9590", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#2D6A4F")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "#9B9590")}
                             >
-                              Go to Session Notes →
+                              <Sparkles style={{ width: 12, height: 12, color: "#2D6A4F" }} />
+                              Transcribe Audio
                             </button>
                           </div>
+                          <div style={{ minHeight: 280 }}>
+                            <SimpleEditor
+                              content={rawNotesContent}
+                              onChange={setRawNotesContent}
+                              editable={true}
+                              placeholder="Paste session notes or transcript here… (e.g. 'Client reports increased anxiety. Used somatic breathing. Strong alliance.')"
+                            />
+                          </div>
                         </div>
-                      )
-                    )}
-
-                    {/* Session Notes tab */}
-                    {noteType === "shorthand" && (
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid #F0EEE9" }}>
-                          <h3 style={{ fontSize: 22, fontWeight: 400, color: "#1A1A18", margin: 0, fontFamily: "'Instrument Serif', Georgia, serif" }}>Session Notes</h3>
-                          <button
-                            onClick={() => showToast?.("Audio transcription ready — paste your raw draft below.", "ok")}
-                            style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#9B9590", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#2D6A4F")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#9B9590")}
-                          >
-                            <Sparkles style={{ width: 12, height: 12, color: "#2D6A4F" }} />
-                            Transcribe Audio
-                          </button>
-                        </div>
-                        <div style={{ minHeight: 280 }}>
-                          <SimpleEditor
-                            content={rawNotesContent}
-                            onChange={setRawNotesContent}
-                            editable={true}
-                            placeholder="Paste session notes or transcript here… (e.g. 'Client reports increased anxiety. Used somatic breathing. Strong alliance.')"
-                          />
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 

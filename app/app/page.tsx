@@ -130,14 +130,7 @@ export default function Page() {
 
   // Loading state — Clerk is still hydrating
   if (!clerkLoaded) {
-    return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center font-sans">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-sage border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-stone-400 font-light">Loading TherapyDesk...</p>
-        </div>
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   // Middleware handles redirect to /sign-in for unauthenticated users.
@@ -333,6 +326,140 @@ export default function Page() {
         visible={toast.visible}
         type={toast.type}
       />
+    </div>
+  );
+}
+
+function AppSkeleton() {
+  return (
+    <div className="h-screen bg-stone-50 text-ink flex flex-col md:flex-row font-sans overflow-hidden">
+      {/* Sidebar Skeleton */}
+      <div 
+        className="hidden md:flex flex-col shrink-0" 
+        style={{ width: 232, borderRight: "1px solid #EEECE8", background: "#FAFAF8", height: "100%" }}
+      >
+        {/* Logo block */}
+        <div className="flex items-center gap-2 p-4 border-b" style={{ borderColor: "#EEECE8" }}>
+          <div className="w-6 h-6 rounded-full bg-stone-200 animate-pulse" />
+          <div className="h-4 bg-stone-200 rounded w-24 animate-pulse" />
+        </div>
+
+        {/* User profile block */}
+        <div className="p-4 flex items-center gap-3 border-b" style={{ borderColor: "#EEECE8" }}>
+          <div className="w-9 h-9 rounded-full bg-stone-200 animate-pulse" />
+          <div className="space-y-1.5 flex-1">
+            <div className="h-3.5 bg-stone-200 rounded w-2/3 animate-pulse" />
+            <div className="h-2.5 bg-stone-200 rounded w-1/2 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Navigation items */}
+        <div className="p-3 space-y-1 flex-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
+              <div className="w-5 h-5 rounded bg-stone-200 animate-pulse" />
+              <div className="h-3 bg-stone-200 rounded w-20 animate-pulse" />
+            </div>
+          ))}
+          
+          {/* Divider */}
+          <div className="h-px bg-stone-200 my-4" />
+
+          {/* Recent Notes title placeholder */}
+          <div className="px-3 mb-2">
+            <div className="h-2 bg-stone-200 rounded w-16 animate-pulse" />
+          </div>
+          
+          {/* Recent notes list */}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg">
+              <div className="w-3.5 h-3.5 rounded-full bg-stone-200 animate-pulse" />
+              <div className="h-2.5 bg-stone-200 rounded w-24 animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        {/* Footer/Sign out block */}
+        <div className="p-4 border-t" style={{ borderColor: "#EEECE8" }}>
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
+            <div className="w-4 h-4 rounded bg-stone-200 animate-pulse" />
+            <div className="h-3 bg-stone-200 rounded w-16 animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Skeleton */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white" style={{ height: "100%" }}>
+        {/* Top bar strip */}
+        <div className="h-14 border-b flex items-center px-6" style={{ borderColor: "#EEECE8", background: "#FAFAF8" }}>
+          <div className="h-3 bg-stone-200 rounded w-36 animate-pulse" />
+        </div>
+
+        {/* Main Dashboard area */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+          {/* Welcome header */}
+          <div className="space-y-2">
+            <div className="h-7 bg-stone-200 rounded w-48 animate-pulse" />
+            <div className="h-3.5 bg-stone-200 rounded w-80 animate-pulse" />
+          </div>
+
+          {/* Stats KPI Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white border border-stone-200/80 p-5 rounded-2xl flex items-center justify-between">
+                <div className="space-y-2 flex-grow">
+                  <div className="h-2.5 bg-stone-200 rounded w-12 animate-pulse" />
+                  <div className="h-7 bg-stone-200 rounded w-10 mt-1 animate-pulse" />
+                  <div className="h-2 bg-stone-200 rounded w-20 mt-1.5 animate-pulse" />
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-stone-100 animate-pulse flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+
+          {/* Split Dashboard Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left large block (Schedule agenda) */}
+            <div className="lg:col-span-2 bg-white border border-stone-200/80 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#EEECE8" }}>
+                <div className="h-4.5 bg-stone-200 rounded w-32 animate-pulse" />
+                <div className="h-3 bg-stone-200 rounded w-20 animate-pulse" />
+              </div>
+              <div className="space-y-3.5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 py-2 border-b border-stone-100 last:border-0">
+                    <div className="w-10 h-10 rounded-xl bg-stone-100 flex-shrink-0 animate-pulse" />
+                    <div className="flex-grow space-y-2">
+                      <div className="h-3 bg-stone-200 rounded w-1/3 animate-pulse" />
+                      <div className="h-2 bg-stone-200 rounded w-1/2 animate-pulse" />
+                    </div>
+                    <div className="w-12 h-5 bg-stone-100 rounded-lg animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right block (Recent Notes / Patients) */}
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#EEECE8" }}>
+                <div className="h-4.5 bg-stone-200 rounded w-24 animate-pulse" />
+                <div className="h-3 bg-stone-200 rounded w-16 animate-pulse" />
+              </div>
+              <div className="space-y-3.5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-2 border-b border-stone-100 last:border-0">
+                    <div className="w-8 h-8 rounded-full bg-stone-100 flex-shrink-0 animate-pulse" />
+                    <div className="flex-grow space-y-2">
+                      <div className="h-3 bg-stone-200 rounded w-1/2 animate-pulse" />
+                      <div className="h-2 bg-stone-200 rounded w-1/3 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
