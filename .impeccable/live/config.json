@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "framework": "next",
+  "files": [],
+  "insertBefore": "</body>",
+  "commentSyntax": "html",
+  "selector": ["body > div:last-child", "main", "section"],
+  "cspChecked": false
+}
