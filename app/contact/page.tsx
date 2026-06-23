@@ -13,7 +13,7 @@ export default function Page() {
           <a href="/contact" className="nav-link active">Contact</a>
           <a href="/admin" className="nav-link" style={{fontSize: "12px", color: "var(--stone)"}}>Admin ↗</a>
         </div>
-        <a href="/app" className="nav-cta">Start free trial →</a>
+        <a href="/app" className="nav-cta">Buy Now →</a>
       </nav>
       
       <div className="page-header">

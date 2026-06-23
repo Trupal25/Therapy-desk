@@ -83,7 +83,7 @@ export default function Page() {
               </SignInButton>
               <SignUpButton mode="modal">
                 <Button className="bg-ink hover:bg-sage text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition duration-200 cursor-pointer px-4.5 py-2">
-                  Start Trial →
+                  Buy Now →
                 </Button>
               </SignUpButton>
             </Show>
@@ -125,7 +125,7 @@ export default function Page() {
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto px-4 mb-16 animate-fadeUp">
           <a href="/app" className="w-full sm:w-auto">
             <Button size="lg" className="w-full sm:w-auto bg-ink hover:bg-sage text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition duration-200 px-8 py-4">
-              Try it free for 14 days →
+              Buy Now →
             </Button>
           </a>
           <a href="/contact" className="w-full sm:w-auto">
@@ -434,10 +434,10 @@ export default function Page() {
               <div className="space-y-4">
                 <a href="/app" className="block w-full">
                   <Button className="w-full py-6 bg-sage hover:bg-sage/95 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer">
-                    Start 14-day free trial
+                    Buy Now
                   </Button>
                 </a>
-                <p className="text-[10.5px] text-stone text-center font-light">No credit card details required to explore.</p>
+                <p className="text-[10.5px] text-stone text-center font-light">Cancel or pause subscription anytime.</p>
               </div>
             </Card>
           </div>
@@ -510,11 +510,11 @@ export default function Page() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(45,106,79,0.18),transparent_75%)] pointer-events-none"></div>
         <div className="max-w-xl mx-auto space-y-8 relative z-10">
           <h2 className="font-serif text-4xl md:text-6xl font-normal tracking-tight leading-tight">Ready to reclaim your clinical hours?</h2>
-          <p className="text-stone-mid/80 text-xs md:text-sm font-light leading-relaxed max-w-md mx-auto">14-day free trial. Setup takes 5 minutes. No credit card details required.</p>
+          <p className="text-stone-mid/80 text-xs md:text-sm font-light leading-relaxed max-w-md mx-auto">Purchase once, use forever. Setup takes 5 minutes.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4">
             <a href="/app" className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto px-8 py-6 bg-white hover:bg-sage-light text-ink hover:text-sage text-xs font-bold rounded-xl shadow transition duration-200">
-                Start Free Trial
+                Buy Now
               </Button>
             </a>
             <a href="/contact" className="w-full sm:w-auto">
