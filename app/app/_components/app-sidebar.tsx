@@ -18,7 +18,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -69,7 +68,7 @@ export function AppSidebar({
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem className="group-data-[state=collapsed]:flex-col">
+          <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/app/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
@@ -81,7 +80,6 @@ export function AppSidebar({
                 </div>
               </Link>
             </SidebarMenuButton>
-            <SidebarTrigger className="-mr-1" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

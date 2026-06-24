@@ -6,12 +6,13 @@ import { useAppData } from "@/app/app/_components/app-data-provider"
 import { AppSidebar } from "@/app/app/_components/app-sidebar"
 import { CommandPalette } from "@/app/app/_components/command-palette"
 import { AddClientDialog, EditClientDialog, HistoryDialog } from "@/app/app/_components/dialogs"
-import { SidebarInset } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { clientsHook, soapNote, recentSoapNotes } = useAppData()
+  const { open } = useSidebar()
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [onboardingChecked, setOnboardingChecked] = useState(false)
 
@@ -79,7 +80,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           router.push("/app/notes")
         }}
       />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset className="relative">
+        {!open && <SidebarTrigger className="absolute top-2 left-2 z-10" />}
+        {children}
+      </SidebarInset>
 
       <AddClientDialog
         isOpen={clientsHook.isAddClientOpen}
