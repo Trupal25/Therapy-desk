@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { sessionId, rawText, userApiKey, subjective, objective, assessment, plan, sessionType } = body;
+    const { sessionId, rawText, userApiKey, subjective, objective, assessment, plan, sessionType, modality } = body;
 
     if (!sessionId || !rawText) {
       return NextResponse.json({ error: 'Session ID and raw notes are required' }, { status: 400 });
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       if (geminiKey) {
         try {
           const startTime = Date.now();
-          const result = await generateSoapWithGemini(rawText, sessionType);
+          const result = await generateSoapWithGemini(rawText, sessionType, modality);
           generationDurationMs = Date.now() - startTime;
 
           soapResult = result.soap;

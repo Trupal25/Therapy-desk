@@ -107,41 +107,44 @@ export interface SoapFields {
   plan: string;
 }
 
+function getModalityInstructions(modality: string): string {
+  switch (modality) {
+    case "cbt":
+      return "This is a CBT (Cognitive Behavioral Therapy) session. Focus the SOAP note on: automatic thoughts identified, cognitive distortions catalogued, behavioral experiments conducted or planned, homework assignments, cognitive restructuring progress, and evidence gathering techniques. Use CBT-specific terminology.";
+    case "dbt":
+      return "This is a DBT (Dialectical Behavior Therapy) session. Focus the SOAP note on: emotion regulation skills used, distress tolerance techniques applied, interpersonal effectiveness practice, mindfulness observations, diary card data if available, and validation strategies. Reference DBT skills by name.";
+    case "psychodynamic":
+      return "This is a psychodynamic therapy session. Focus the SOAP note on: transference dynamics observed, countertransference reactions, defense mechanisms identified, unconscious patterns and themes, insight gained, interpretation offered, and resistance observed. Use psychodynamic terminology.";
+    case "brief":
+      return "This is a Brief Solution-Focused therapy session. Focus the SOAP note on: scaling question responses, exceptions identified (times when the problem was absent or less severe), coping strategies already in use, miracle question exploration, goal definition, and exception-based interventions. Keep the note concise and goal-oriented.";
+    case "trauma":
+      return "This is a trauma-focused therapy session. Focus the SOAP note on: trigger identification, SUDS (Subjective Units of Distress Scale) levels, window of tolerance observations, grounding and resourcing techniques used, trauma processing stage, containment strategies, and safety planning. Reference trauma-informed care principles.";
+    default:
+      return "";
+  }
+}
+
 /**
  * Calls the Gemini API to generate a structured SOAP note from raw therapist notes.
  * Returns the parsed SOAP fields and the model name used.
  */
 export async function generateSoapWithGemini(
   rawNotes: string,
-  sessionType?: string
+  sessionType?: string,
+  modality?: string
 ): Promise<{ soap: SoapFields; model: string }> {
   const apiKey = getApiKey();
   const model = await resolveAvailableModel();
 
   const sessionContext = sessionType
-    ? `\nSession Type: ${sessionType}`
+    ? "\nSession Type: " + sessionType
     : "";
 
-  const prompt = `You are a clinical psychology documentation assistant. Convert the following raw therapist session shorthand notes into a highly professional, structured clinical SOAP note suitable for medical records.
+  const modalityContext = modality && modality !== "general"
+    ? "\nTherapeutic Modality: " + modality.toUpperCase() + "\n\n" + getModalityInstructions(modality)
+    : "";
 
-Follow these clinical documentation standards:
-- Use clinical terminology appropriate for mental health documentation
-- Be specific and measurable where possible
-- Avoid subjective language in the Objective section
-- Include risk assessment considerations when relevant
-- Format the Plan section as numbered actionable items
-${sessionContext}
-
-Raw Session Notes:
-"${rawNotes}"
-
-IMPORTANT: Respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text) with these exact keys:
-{
-  "subjective": "(Patient's self-reported symptoms, concerns, and experiences in clinical language)",
-  "objective": "(Therapist's clinical observations: affect, appearance, behavior, cognition, speech patterns)",
-  "assessment": "(Clinical formulation, diagnostic impressions, progress evaluation, risk assessment)",
-  "plan": "(Numbered treatment plan items: interventions, homework, follow-up scheduling, referrals)"
-}`;
+  const prompt = "You are a clinical psychology documentation assistant. Convert the following raw therapist session shorthand notes into a highly professional, structured clinical SOAP note suitable for medical records." + modalityContext + "\n\nFollow these clinical documentation standards:\n- Use clinical terminology appropriate for mental health documentation\n- Be specific and measurable where possible\n- Avoid subjective language in the Objective section\n- Include risk assessment considerations when relevant\n- Format the Plan section as numbered actionable items" + sessionContext + "\n\nRaw Session Notes:\n\"" + rawNotes + "\"\n\nIMPORTANT: Respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text) with these exact keys:\n{\n  \"subjective\": \"(Patient's self-reported symptoms, concerns, and experiences in clinical language)\",\n  \"objective\": \"(Therapist's clinical observations: affect, appearance, behavior, cognition, speech patterns)\",\n  \"assessment\": \"(Clinical formulation, diagnostic impressions, progress evaluation, risk assessment)\",\n  \"plan\": \"(Numbered treatment plan items: interventions, homework, follow-up scheduling, referrals)\"\n}";
 
   const endpoint = `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`;
 

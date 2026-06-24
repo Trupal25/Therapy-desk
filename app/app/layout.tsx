@@ -1,5 +1,6 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
@@ -11,6 +12,20 @@ export default function AppLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isOnboarding = pathname === "/app/onboarding"
+
+  if (isOnboarding) {
+    return (
+      <TooltipProvider>
+        <AppDataProvider>
+          {children}
+          <Toaster position="bottom-right" richColors />
+        </AppDataProvider>
+      </TooltipProvider>
+    )
+  }
+
   return (
     <TooltipProvider>
       <AppDataProvider>

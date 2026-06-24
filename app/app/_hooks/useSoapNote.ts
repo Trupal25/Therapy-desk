@@ -37,6 +37,8 @@ export function useSoapNote(
   const [soapPlan, setSoapPlan] = useState("");
   const [soapUnifiedContent, setSoapUnifiedContent] = useState("");
 
+  const [selectedModality, setSelectedModality] = useState<string>("general");
+
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyClient, setHistoryClient] = useState<Client | null>(null);
   const [historyList, setHistoryList] = useState<any[]>([]);
@@ -94,8 +96,9 @@ export function useSoapNote(
     }
   }, [selectedSessionForNotes, fetchSoapNoteForSession]);
 
-  const handleGenerateSoap = async () => {
-    if (!selectedSessionForNotes || !rawNotesContent) {
+  const handleGenerateSoap = async (overrideText?: string) => {
+    const textToUse = overrideText || rawNotesContent;
+    if (!selectedSessionForNotes || !textToUse) {
       showToast("Please enter raw notes", "err");
       return;
     }
@@ -107,8 +110,9 @@ export function useSoapNote(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: selectedSessionForNotes.id,
-          rawText: rawNotesContent,
+          rawText: textToUse,
           sessionType: selectedSessionForNotes.sessionType,
+          modality: selectedModality,
         }),
       });
 
@@ -274,6 +278,8 @@ export function useSoapNote(
     isGenerating,
     searchClientQuery,
     setSearchClientQuery,
+    selectedModality,
+    setSelectedModality,
     soapSubjective,
     setSoapSubjective,
     soapObjective,
