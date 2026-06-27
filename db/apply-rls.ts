@@ -72,7 +72,9 @@ export function splitSqlStatements(sql: string): string[] {
 export async function applyRls(url: string) {
   console.log('🔒 Applying Row-Level Security (RLS) policies and triggers from rls.sql...');
 
-  const client = new Client({ connectionString: url });
+  const urlObj = new URL(url);
+  urlObj.searchParams.delete('sslmode');
+  const client = new Client({ connectionString: urlObj.toString(), ssl: { rejectUnauthorized: false } });
   await client.connect();
 
   const sqlPath = path.join(process.cwd(), 'db/rls.sql');

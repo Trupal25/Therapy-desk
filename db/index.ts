@@ -3,7 +3,12 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 
-const connectionString = process.env.DATABASE_URL!;
+const rawUrl = process.env.DATABASE_URL!;
+
+const url = new URL(rawUrl);
+url.searchParams.delete('sslmode');
+
+const connectionString = url.toString();
 
 declare global {
   // eslint-disable-next-line no-var
@@ -26,10 +31,13 @@ if (process.env.NODE_ENV !== 'production') {
 const pool =
   globalThis.pool ||
   new Pool({
-    connectionString: connectionString,
+    connectionString,
     max: 10,
     connectionTimeoutMillis: 15000,
     idleTimeoutMillis: 15000,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   });
 
 const db =

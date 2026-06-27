@@ -12,7 +12,9 @@ async function main() {
   if (!url) throw new Error('DATABASE_URL is not set');
 
   console.log('🚀 Running migrations via pg...');
-  const pool = new Pool({ connectionString: url, max: 1 });
+  const urlObj = new URL(url);
+  urlObj.searchParams.delete('sslmode');
+  const pool = new Pool({ connectionString: urlObj.toString(), max: 1, ssl: { rejectUnauthorized: false } });
   const db = drizzle({ client: pool });
   const dir = path.join(process.cwd(), 'drizzle');
 
