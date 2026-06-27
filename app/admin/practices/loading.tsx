@@ -1,0 +1,17 @@
+import { TableSkeleton } from "../_components/skeletons";
+
+export default function AdminPracticesLoading() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="space-y-1">
+        <div className="h-8 w-32 bg-muted rounded" />
+        <div className="h-4 w-48 bg-muted/50 rounded" />
+      </div>
+      <div className="flex gap-3">
+        <div className="h-9 w-60 bg-muted rounded" />
+        <div className="h-9 w-[160px] bg-muted rounded" />
+      </div>
+      <TableSkeleton rows={8} cols={8} />
+    </div>
+  );
+}

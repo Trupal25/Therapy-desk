@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={cn("h-full", "antialiased", plusJakartaSans.variable, instrumentSerif.variable, "font-sans")}
     >
       <body className="min-h-full flex flex-col">
