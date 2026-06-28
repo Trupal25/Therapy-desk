@@ -43,3 +43,6 @@ next-env.d.ts
 # agents
 .agents/
 
+# prisma generated output
+/generated/
+
