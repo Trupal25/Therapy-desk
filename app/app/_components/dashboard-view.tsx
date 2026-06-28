@@ -55,18 +55,18 @@ function KpiCard({
 }) {
   return (
     <Card className={cn("border-border", loading && "animate-pulse")}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-          <Icon className="h-4 w-4 text-primary" />
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+          </div>
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-medium truncate">{label}</p>
         </div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground font-medium">{label}</p>
-          <p className="text-xl font-bold truncate leading-tight">
-            {value}
-            {suffix && <span className="text-sm font-normal text-muted-foreground ml-0.5">{suffix}</span>}
-          </p>
-          <p className="text-xs text-muted-foreground">{sub}</p>
-        </div>
+        <p className="text-lg sm:text-xl font-bold leading-tight">
+          {value}
+          {suffix && <span className="text-xs sm:text-sm font-normal text-muted-foreground ml-0.5">{suffix}</span>}
+        </p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>
       </CardContent>
     </Card>
   )
@@ -139,16 +139,16 @@ export function DashboardView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
-          <h1 className="font-serif text-3xl font-normal mt-1">
+          <h1 className="font-serif text-2xl sm:text-3xl font-normal mt-1">
             {getGreeting()}, {getFirstName(user.fullName)}
           </h1>
           {!loading && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {todaySessions.length === 0
                 ? "No sessions scheduled today."
                 : todaySessions.length + " session" + (todaySessions.length > 1 ? "s" : "") + " today" + (
@@ -157,8 +157,8 @@ export function DashboardView({
           )}
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button onClick={onNewClientClick} size="sm"><Plus className="mr-1.5 h-4 w-4" />Add Patient</Button>
-          <Button onClick={onViewCalendarClick} variant="outline" size="sm"><Calendar className="mr-1.5 h-4 w-4" />Calendar</Button>
+          <Button onClick={onNewClientClick} size="sm" className="flex-1 sm:flex-none"><Plus className="mr-1.5 h-4 w-4" />Add Patient</Button>
+          <Button onClick={onViewCalendarClick} variant="outline" size="sm" className="flex-1 sm:flex-none"><Calendar className="mr-1.5 h-4 w-4" />Calendar</Button>
         </div>
       </div>
 
@@ -261,22 +261,23 @@ export function DashboardView({
               const initials = s.clientName.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()
               const palette = avatarColors[s.clientName.charCodeAt(0) % avatarColors.length]
               return (
-                <div key={s.id} className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className={cn("text-xs font-bold", palette)}>{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{s.clientName}</p>
-                    <p className="text-xs text-muted-foreground">{time} · {s.durationMinutes} min · {s.sessionType}</p>
-                  </div>
-                  <Link href={"/app/patients/" + s.clientId} className="text-xs text-muted-foreground hover:text-foreground shrink-0 hidden sm:block">
-                    <span className="flex items-center gap-1"><ArrowRight className="h-3 w-3" />Profile</span>
-                  </Link>
-                  <Button size="sm" variant={s.soapNote ? "secondary" : "default"} onClick={() => client && onSelectSessionForNotes(s, client)} disabled={!client}>
-                    <FileText className="mr-1 h-3 w-3" />
-                    {s.soapNote ? "View Note" : "Write Note"}
-                  </Button>
-                </div>
+                <div key={s.id} className="p-3 sm:p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+                   <Avatar className="h-8 w-8 shrink-0">
+                     <AvatarFallback className={cn("text-xs font-bold", palette)}>{initials}</AvatarFallback>
+                   </Avatar>
+                   <div className="flex-1 min-w-0">
+                     <p className="text-sm font-medium truncate">{s.clientName}</p>
+                     <p className="text-xs text-muted-foreground truncate">{time} · {s.durationMinutes} min · {s.sessionType}</p>
+                   </div>
+                   <Link href={"/app/patients/" + s.clientId} className="text-xs text-muted-foreground hover:text-foreground shrink-0 hidden sm:block">
+                     <span className="flex items-center gap-1"><ArrowRight className="h-3 w-3" />Profile</span>
+                   </Link>
+                   <Button size="sm" variant={s.soapNote ? "secondary" : "default"} onClick={() => client && onSelectSessionForNotes(s, client)} disabled={!client} className="shrink-0">
+                     <FileText className="mr-1 h-3 w-3" />
+                     <span className="hidden xs:inline">{s.soapNote ? "View Note" : "Write Note"}</span>
+                     <span className="xs:hidden">{s.soapNote ? "View" : "Write"}</span>
+                   </Button>
+                 </div>
               )
             })
           )}

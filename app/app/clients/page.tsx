@@ -7,7 +7,7 @@ export default function ClientsPage() {
   const { clientsHook, sessionsHook, soapNote } = useAppData()
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto pt-14 pb-6 px-4 sm:p-6 md:p-8">
       <ClientsView
         clients={clientsHook.clients}
         sessions={sessionsHook.sessions}

@@ -7,7 +7,7 @@ export default function SettingsPage() {
   const { settings } = useAppData()
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto pt-14 pb-6 px-4 sm:p-6 md:p-8">
       <SettingsView
         profName={settings.profName}
         setProfName={settings.setProfName}

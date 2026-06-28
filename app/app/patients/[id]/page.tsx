@@ -58,7 +58,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+      <div className="flex-1 overflow-y-auto pt-14 pb-6 px-4 sm:p-6 md:p-8">
         <div className="space-y-6">
           <div className="flex items-start gap-5">
             <Skeleton className="h-16 w-16 rounded-full" />
@@ -80,7 +80,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 
   if (error) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+      <div className="flex-1 overflow-y-auto pt-14 pb-6 px-4 sm:p-6 md:p-8">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertCircle className="h-10 w-10 text-muted-foreground/50 mb-4" />
           <h2 className="text-lg font-semibold">{error}</h2>
@@ -93,7 +93,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
   if (!data) return null
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto pt-14 pb-6 px-4 sm:p-6 md:p-8">
       <PatientDetailView
         patient={data.client}
         sessions={data.sessions}

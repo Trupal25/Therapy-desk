@@ -28,12 +28,12 @@ export default function AppLayout({
 
   return (
     <TooltipProvider>
-      <AppDataProvider>
-        <SidebarProvider>
+      <SidebarProvider>
+        <AppDataProvider>
           <AppShell>{children}</AppShell>
-        </SidebarProvider>
-        <Toaster position="bottom-right" richColors />
-      </AppDataProvider>
+          <Toaster position="bottom-right" richColors />
+        </AppDataProvider>
+      </SidebarProvider>
     </TooltipProvider>
   )
 }

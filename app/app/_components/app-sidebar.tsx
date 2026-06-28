@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect } from "react"
 import { LayoutDashboard, FileText, Calendar, Users, Settings, LogOut } from "lucide-react"
 import { useUser, useClerk } from "@clerk/nextjs"
 
@@ -18,6 +19,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -55,6 +57,12 @@ export function AppSidebar({
   const pathname = usePathname()
   const { user: clerkUser } = useClerk()
   const { signOut } = useClerk()
+  const { setOpenMobile } = useSidebar()
+
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    setOpenMobile(false)
+  }, [pathname, setOpenMobile])
 
   const fullName = clerkUser?.fullName || "Therapist"
   const initials = fullName

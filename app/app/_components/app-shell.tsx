@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { clientsHook, soapNote, recentSoapNotes } = useAppData()
-  const { open } = useSidebar()
+  const { open, isMobile } = useSidebar()
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [onboardingChecked, setOnboardingChecked] = useState(false)
 
@@ -58,12 +58,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!onboardingChecked) {
     return (
-      <div className="flex h-svh w-full items-center justify-center bg-mist">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-10 rounded-xl bg-muted animate-pulse" />
-          <div className="h-3 w-32 rounded bg-muted animate-pulse" />
-        </div>
-      </div>
+      <>
+        <AppSidebar
+          recentSoapNotes={[]}
+          onSelectRecentNote={() => {}}
+        />
+        <SidebarInset className="relative">
+          {(isMobile || !open) && <SidebarTrigger className="absolute top-2 left-2 z-10" />}
+          <div className="flex flex-1 items-center justify-center bg-mist h-full">
+            <div className="flex flex-col items-center gap-3">
+              <div className="size-10 rounded-xl bg-muted animate-pulse" />
+              <div className="h-3 w-32 rounded bg-muted animate-pulse" />
+            </div>
+          </div>
+        </SidebarInset>
+      </>
     )
   }
 
@@ -81,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       />
       <SidebarInset className="relative">
-        {!open && <SidebarTrigger className="absolute top-2 left-2 z-10" />}
+        {(isMobile || !open) && <SidebarTrigger className="absolute top-2 left-2 z-10" />}
         {children}
       </SidebarInset>
 

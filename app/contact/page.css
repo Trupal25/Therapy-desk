@@ -26,6 +26,32 @@ nav {
 }
 .nav-cta:hover { background: var(--sage); }
 
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.nav-hamburger {
+  display: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: none; border-radius: 8px;
+  background: transparent; color: var(--ink); cursor: pointer;
+  transition: background 0.15s;
+}
+.nav-hamburger:hover { background: var(--stone-light); }
+
+.mobile-menu-overlay { position: fixed; inset: 0; z-index: 200; }
+.mobile-menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(4px); }
+.mobile-menu-panel {
+  position: absolute; top: 0; right: 0; width: 260px; height: 100%;
+  background: white; box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+  padding: 80px 20px 20px; display: flex; flex-direction: column; gap: 4px;
+}
+.mobile-menu-link {
+  display: block; padding: 12px 14px; font-size: 14px; font-weight: 500;
+  color: var(--stone); text-decoration: none; border-radius: 8px; transition: all 0.15s;
+}
+.mobile-menu-link:hover, .mobile-menu-link.active { background: var(--stone-light); color: var(--ink); }
+
+@media (min-width: 769px) {
+  .nav-hamburger { display: none !important; }
+}
+
 .page-header {
   padding: 140px 60px 80px;
   background: var(--white);
@@ -133,3 +159,34 @@ footer {
 .footer-links { display: flex; gap: 24px; }
 .footer-link { font-size: 13px; color: var(--stone); text-decoration: none; transition: color 0.15s; }
 .footer-link:hover { color: var(--ink); }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  .nav-cta { padding: 8px 16px; font-size: 12px; }
+  .nav-hamburger { display: flex; }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+
+  .page-header { padding: 110px 20px 50px; }
+  .page-h1 { font-size: 32px; }
+  .page-sub { font-size: 14px; }
+
+  .contact-body { padding: 30px 20px 60px; grid-template-columns: 1fr; gap: 40px; }
+
+  .info-h2 { font-size: 24px; }
+
+  .contact-form-wrap { padding: 24px; }
+  .form-row { grid-template-columns: 1fr; }
+  .reason-grid { grid-template-columns: 1fr; }
+
+  footer { padding: 30px 20px; flex-direction: column; gap: 20px; text-align: center; }
+  .footer-links { justify-content: center; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  nav { padding: 18px 32px; }
+  .page-header { padding: 130px 40px 60px; }
+  .contact-body { padding: 40px 30px 80px; gap: 40px; }
+  footer { padding: 35px 40px; }
+}

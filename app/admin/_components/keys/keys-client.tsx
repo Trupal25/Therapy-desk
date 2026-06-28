@@ -39,8 +39,8 @@ export function KeysClient({ keys }: KeysClientProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Encryption Keys</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Encryption Keys</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           AES-256-GCM key management across all organizations
         </p>
       </div>
@@ -61,75 +61,149 @@ export function KeysClient({ keys }: KeysClientProps) {
       </div>
 
       <div className="rounded-lg border overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Organization</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Algorithm</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Version</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">KMS Ref</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Created</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Rotated</th>
-              <th className="text-left text-xs font-medium text-muted-foreground p-3">Expires</th>
-              <th className="text-right text-xs font-medium text-muted-foreground p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {keys.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
-                  No encryption keys found
-                </td>
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Organization</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Algorithm</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Version</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">KMS Ref</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Created</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Rotated</th>
+                <th className="text-left text-xs font-medium text-muted-foreground p-3">Expires</th>
+                <th className="text-right text-xs font-medium text-muted-foreground p-3">Actions</th>
               </tr>
-            ) : (
-              keys.map((key) => (
-                <tr key={key.id} className="hover:bg-muted/30">
-                  <td className="p-3">
-                    <p className="text-sm font-medium">{key.organizationName}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{key.organizationId.slice(0, 8)}...</p>
+            </thead>
+            <tbody className="divide-y">
+              {keys.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
+                    No encryption keys found
                   </td>
-                  <td className="p-3 text-sm">{key.algorithm}</td>
-                  <td className="p-3">
-                    <span className="font-mono text-sm bg-muted px-2 py-0.5 rounded text-xs">
-                      v{key.keyVersion}
-                    </span>
-                  </td>
-                  <td className="p-3 text-xs text-muted-foreground font-mono">
-                    {key.kmsKeyId ?? "HKDF"}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {key.createdAt ? format(new Date(key.createdAt), "MMM d, yyyy") : "—"}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {key.rotatedAt ? format(new Date(key.rotatedAt), "MMM d, yyyy") : (
-                      <span className="text-amber-600 font-medium text-xs">Not rotated</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {key.expiresAt ? (
-                      new Date(key.expiresAt) < new Date() ? (
-                        <span className="text-red-600 font-medium">Expired</span>
-                      ) : (
-                        format(new Date(key.expiresAt), "MMM d, yyyy")
-                      )
-                    ) : "—"}
-                  </td>
-                  <td className="p-3 text-right">
+                </tr>
+              ) : (
+                keys.map((key) => (
+                  <tr key={key.id} className="hover:bg-muted/30">
+                    <td className="p-3">
+                      <p className="text-sm font-medium">{key.organizationName}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{key.organizationId.slice(0, 8)}...</p>
+                    </td>
+                    <td className="p-3 text-sm">{key.algorithm}</td>
+                    <td className="p-3">
+                      <span className="font-mono text-sm bg-muted px-2 py-0.5 rounded text-xs">
+                        v{key.keyVersion}
+                      </span>
+                    </td>
+                    <td className="p-3 text-xs text-muted-foreground font-mono">
+                      {key.kmsKeyId ?? "HKDF"}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {key.createdAt ? format(new Date(key.createdAt), "MMM d, yyyy") : "—"}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {key.rotatedAt ? format(new Date(key.rotatedAt), "MMM d, yyyy") : (
+                        <span className="text-amber-600 font-medium text-xs">Not rotated</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {key.expiresAt ? (
+                        new Date(key.expiresAt) < new Date() ? (
+                          <span className="text-red-600 font-medium">Expired</span>
+                        ) : (
+                          format(new Date(key.expiresAt), "MMM d, yyyy")
+                        )
+                      ) : "—"}
+                    </td>
+                    <td className="p-3 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRotate(key.id, key.organizationId)}
+                        disabled={rotating === key.id}
+                      >
+                        <RotateCw className={`size-3 mr-1 ${rotating === key.id ? "animate-spin" : ""}`} />
+                        {rotating === key.id ? "Rotating..." : "Rotate"}
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden divide-y">
+          {keys.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No encryption keys found
+            </div>
+          ) : (
+            keys.map((key) => {
+              const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
+              return (
+                <div key={key.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{key.organizationName}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{key.organizationId.slice(0, 8)}...</p>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleRotate(key.id, key.organizationId)}
                       disabled={rotating === key.id}
+                      className="shrink-0"
                     >
                       <RotateCw className={`size-3 mr-1 ${rotating === key.id ? "animate-spin" : ""}`} />
-                      {rotating === key.id ? "Rotating..." : "Rotate"}
+                      {rotating === key.id ? "..." : "Rotate"}
                     </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground font-medium">Algorithm</span>
+                      <p className="mt-0.5">{key.algorithm}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground font-medium">Version</span>
+                      <p className="mt-0.5 font-mono">v{key.keyVersion}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground font-medium">KMS Ref</span>
+                      <p className="mt-0.5 font-mono truncate">{key.kmsKeyId ?? "HKDF"}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground font-medium">Created</span>
+                      <p className="mt-0.5">{key.createdAt ? format(new Date(key.createdAt), "MMM d, yyyy") : "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground font-medium">Rotated</span>
+                      <p className="mt-0.5">
+                        {key.rotatedAt ? format(new Date(key.rotatedAt), "MMM d, yyyy") : (
+                          <span className="text-amber-600 font-medium">Not rotated</span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground font-medium">Expires</span>
+                      <p className="mt-0.5">
+                        {key.expiresAt ? (
+                          isExpired ? (
+                            <span className="text-red-600 font-medium">Expired</span>
+                          ) : (
+                            format(new Date(key.expiresAt), "MMM d, yyyy")
+                          )
+                        ) : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
     </div>
   );

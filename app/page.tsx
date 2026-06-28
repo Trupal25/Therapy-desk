@@ -14,6 +14,8 @@ import {
   UserCheck2,
   Lock,
   Unlock,
+  Menu,
+  X,
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 
 export default function Page() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,7 +80,7 @@ export default function Page() {
           <div className="flex items-center gap-3">
             <Show when="signed-out">
               <SignInButton mode="modal">
-                <Button variant="ghost" className="text-xs font-semibold text-stone hover:text-ink transition cursor-pointer">
+                <Button variant="ghost" className="hidden sm:inline-flex text-xs font-semibold text-stone hover:text-ink transition cursor-pointer">
                   Sign In
                 </Button>
               </SignInButton>
@@ -90,15 +93,51 @@ export default function Page() {
             <Show when="signed-in">
               <a 
                 href="/app" 
-                className="text-xs font-semibold text-stone hover:text-ink transition mr-2"
+                className="hidden sm:inline-flex text-xs font-semibold text-stone hover:text-ink transition mr-2"
               >
                 Go to Workspace
               </a>
               <UserButton />
             </Show>
+            <button
+              className="md:hidden flex items-center justify-center w-10 h-10 -mr-2 rounded-lg hover:bg-stone-light/80 active:bg-stone-light transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              <div className="relative w-5 h-5">
+                <span className={`absolute left-0 block h-[1.5px] w-5 bg-ink rounded-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${mobileMenuOpen ? "top-[7px] rotate-45" : "top-[3px]"}`} />
+                <span className={`absolute left-0 block h-[1.5px] w-5 bg-ink rounded-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${mobileMenuOpen ? "top-[7px] -rotate-45" : "top-[11px]"}`} />
+              </div>
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 right-0 w-72 h-full bg-white shadow-2xl border-l border-stone-mid/30 p-6 pt-24 space-y-1 animate-fadeUp">
+            <a href="/" className="block py-2.5 px-3 text-sm font-semibold text-ink hover:bg-stone-light rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>Home</a>
+            <a href="/app" className="block py-2.5 px-3 text-sm font-semibold text-stone hover:bg-stone-light hover:text-ink rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>App Workspace</a>
+            <a href="/contact" className="block py-2.5 px-3 text-sm font-semibold text-stone hover:bg-stone-light hover:text-ink rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>Contact Support</a>
+            <a href="/admin" className="block py-2.5 px-3 text-sm font-semibold text-stone hover:bg-stone-light hover:text-ink rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>Admin Panel</a>
+            <div className="border-t border-stone-mid/30 my-4" />
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <Button variant="ghost" className="w-full justify-start text-sm font-semibold text-stone hover:text-ink cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
+                  Sign In
+                </Button>
+              </SignInButton>
+            </Show>
+            <Show when="signed-in">
+              <a href="/app" className="block py-2.5 px-3 text-sm font-semibold text-sage hover:bg-sage-light rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>
+                Go to Workspace →
+              </a>
+            </Show>
+          </div>
+        </div>
+      )}
 
       {/* HERO SECTION */}
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-6 pt-36 pb-20 overflow-hidden">

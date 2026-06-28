@@ -372,8 +372,8 @@ export function NotesView({
   return (
     <div className="flex flex-col h-full">
       {/* Header: client + session chips + actions */}
-      <div className="border-b px-4 py-2.5 flex flex-col gap-2 shrink-0">
-        {/* Row 1: Client + search + status + export menu */}
+      <div className="border-b px-3 sm:px-4 py-2.5 flex flex-col gap-2 shrink-0">
+        {/* Row 1: Client selector + status + menu */}
         <div className="flex items-center gap-2">
           <Select
             value={selectedClientForNotes.id}
@@ -385,7 +385,7 @@ export function NotesView({
               }
             }}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="flex-1 sm:flex-none sm:w-[220px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -403,11 +403,9 @@ export function NotesView({
             </SelectContent>
           </Select>
 
-          <div className="flex-1" />
-
-          <Badge variant={statusBadge.variant} className="gap-1">
+          <Badge variant={statusBadge.variant} className="gap-1 shrink-0">
             <statusBadge.icon className="h-3 w-3" />
-            {statusBadge.label}
+            <span className="hidden sm:inline">{statusBadge.label}</span>
           </Badge>
 
           <div className="hidden sm:flex items-center gap-1 w-20">
@@ -428,7 +426,7 @@ export function NotesView({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={!generatedSoap} className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" disabled={!generatedSoap} className="h-8 w-8 p-0 shrink-0">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -450,96 +448,82 @@ export function NotesView({
           </DropdownMenu>
         </div>
 
-        {/* Row 2: Session date scrubber + action buttons */}
-        <div className="flex items-center gap-2">
-          {clientSessions.length === 0 ? (
-            <div className="flex-1 text-xs text-muted-foreground flex items-center gap-2">
-              <span>No sessions for this patient.</span>
-              <Button size="sm" variant="outline" onClick={onBookSessionClick}>
-                Book Session
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 flex-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
-                {sortedSessions.map((s) => {
-                  const isActive = selectedSessionForNotes?.id === s.id
-                  const hasNote = !!s.soapNote
-                  const isSigned = s.soapNote?.status === "signed"
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedSessionForNotes(s)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors border",
-                        isActive
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-white text-foreground border-border hover:bg-muted"
-                      )}
-                    >
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatSessionDateShort(s.scheduledAt)}</span>
-                      <span className="text-[10px] opacity-60">{s.sessionType}</span>
-                      {isSigned && (
-                        <Lock className="h-2.5 w-2.5 ml-0.5 opacity-70" />
-                      )}
-                      {hasNote && !isSigned && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*,video/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || isTranscribing || isSigned}
-                  title="Upload session recording for transcription"
-                  className="h-8 w-8 p-0"
-                >
-                  {isUploading || isTranscribing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
+        {/* Row 2: Session date scrubber */}
+        {clientSessions.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+            {sortedSessions.map((s) => {
+              const isActive = selectedSessionForNotes?.id === s.id
+              const hasNote = !!s.soapNote
+              const isSigned = s.soapNote?.status === "signed"
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSessionForNotes(s)}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium shrink-0 transition-colors border",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-white text-foreground border-border hover:bg-muted"
                   )}
-                </Button>
-                <Button onClick={onGenerate} disabled={isGenerating || isSigned} size="sm">
-                  <Sparkles className={cn("h-3.5 w-3.5 mr-1", isGenerating && "animate-spin")} />
-                  {isGenerating ? "..." : isSigned ? "Locked" : generatedSoap ? "Regen" : "Generate"}
-                </Button>
-                {!isSigned && generatedSoap && (
-                  <>
-                    <Button onClick={onSave} disabled={isSaving} variant="secondary" size="sm">
-                      {isSaving ? "..." : "Save"}
-                    </Button>
-                    <Button onClick={handleSignAndLock} variant="outline" size="sm">
-                      <Lock className="h-3.5 w-3.5 mr-1" />
-                      Sign
-                    </Button>
-                  </>
-                )}
-                {isSigned && (
-                  <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-medium bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 shrink-0">
-                    <CheckCircle2 className="h-3 w-3 shrink-0" />
-                    Signed
-                  </div>
-                )}
-              </div>
+                >
+                  <Calendar className="h-3 w-3 shrink-0" />
+                  <span>{formatSessionDateShort(s.scheduledAt)}</span>
+                  {isSigned && <Lock className="h-2.5 w-2.5 opacity-70" />}
+                  {hasNote && !isSigned && <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {clientSessions.length === 0 && (
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <span>No sessions for this patient.</span>
+            <Button size="sm" variant="outline" onClick={onBookSessionClick}>Book Session</Button>
+          </div>
+        )}
+
+        {/* Row 3: Action buttons */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*,video/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isTranscribing || isSigned}
+            title="Upload session recording for transcription"
+            className="h-7 sm:h-8 w-7 sm:w-8 p-0"
+          >
+            {isUploading || isTranscribing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
+          </Button>
+          <Button onClick={onGenerate} disabled={isGenerating || isSigned} size="sm" className="h-7 sm:h-8">
+            <Sparkles className={cn("h-3.5 w-3.5 mr-1", isGenerating && "animate-spin")} />
+            {isGenerating ? "..." : isSigned ? "Locked" : generatedSoap ? "Regen" : "Generate"}
+          </Button>
+          {!isSigned && generatedSoap && (
+            <>
+              <Button onClick={onSave} disabled={isSaving} variant="secondary" size="sm" className="h-7 sm:h-8">
+                {isSaving ? "..." : "Save"}
+              </Button>
+              <Button onClick={handleSignAndLock} variant="outline" size="sm" className="h-7 sm:h-8">
+                <Lock className="h-3.5 w-3.5 mr-1" />
+                Sign
+              </Button>
             </>
+          )}
+          {isSigned && (
+            <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-medium bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 shrink-0">
+              <CheckCircle2 className="h-3 w-3 shrink-0" />
+              Signed
+            </div>
           )}
         </div>
 
-        {/* Row 3: Modality selector */}
+        {/* Row 4: Modality selector */}
         {selectedSessionForNotes && !isSigned && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
@@ -579,7 +563,7 @@ export function NotesView({
           <div className="h-64 bg-muted rounded" />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {/* Tabs */}
             <div className="flex gap-1 border-b">

@@ -19,6 +19,7 @@ interface AppDataContextValue {
     userId: string
     role: string
   } | null
+  clerkLoaded: boolean
   apiConnected: boolean
   clientsHook: ReturnType<typeof useClients>
   sessionsHook: ReturnType<typeof useSessions>
@@ -139,6 +140,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      clerkLoaded,
       apiConnected,
       clientsHook,
       sessionsHook,
@@ -146,25 +148,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       settings,
       recentSoapNotes,
     }),
-    [user, apiConnected, clientsHook, sessionsHook, soapNote, settings, recentSoapNotes]
+    [user, clerkLoaded, apiConnected, clientsHook, sessionsHook, soapNote, settings, recentSoapNotes]
   )
-
-  if (!clerkLoaded) {
-    return <AppLoadingSkeleton />
-  }
-
-  if (!clerkUser) return null
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
-}
-
-function AppLoadingSkeleton() {
-  return (
-    <div className="flex h-svh w-full items-center justify-center bg-mist">
-      <div className="flex flex-col items-center gap-3">
-        <div className="size-10 rounded-xl bg-muted animate-pulse" />
-        <div className="h-3 w-32 rounded bg-muted animate-pulse" />
-      </div>
-    </div>
-  )
 }
