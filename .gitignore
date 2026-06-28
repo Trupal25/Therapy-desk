@@ -43,6 +43,10 @@ next-env.d.ts
 # agents
 .agents/
 
+# other AI tool configs
+.claude/
+.codex/
+
 # prisma generated output
 /generated/
 
